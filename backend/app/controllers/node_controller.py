@@ -228,7 +228,7 @@ async def _anchor_on_chain(node_id: str, text: str, embedding: list[float]):
     """Fire-and-forget blockchain anchoring."""
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(
+            response = await client.post(
                 "http://localhost:8001/anchor",
                 json={
                     "node_id": node_id,
@@ -237,5 +237,6 @@ async def _anchor_on_chain(node_id: str, text: str, embedding: list[float]):
                 },
                 timeout=10.0,
             )
+            logger.info(f"Blockchain anchor response: {response.status_code} — {response.text}")
     except Exception as e:
         logger.warning(f"Blockchain anchoring failed (non-fatal): {e}")

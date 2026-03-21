@@ -3,6 +3,7 @@ import sys
 import hashlib
 import json
 import time
+import base64
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -32,26 +33,24 @@ app.add_middleware(
 )
 
 def get_client() -> LiveProofClient:
-    algorand = algokit_utils.AlgorandClient(
-        algokit_utils.AlgoClientNetworkConfig(
-            algod_config=algokit_utils.AlgoClientConfig(
-                server=os.getenv("ALGOD_SERVER", "http://localhost"),
-                port=int(os.getenv("ALGOD_PORT", 4001)),
-                token=os.getenv("ALGOD_TOKEN", ""),
-            )
-        )
-    )
-    mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
-    account = algokit_utils.SigningAccount(
-        private_key=algokit_utils.mnemonic_to_private_key(mnemonic)
-    )
+    algorand = algokit_utils.AlgorandClient.from_environment()
+
+    raw_mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
+
+    # Decode base64 to get the private key bytes
+    try:
+        private_key = base64.b64decode(raw_mnemonic)
+    except Exception as e:
+        raise ValueError(f"Failed to decode DEPLOYER_MNEMONIC from base64: {e}")
+
+    account = algokit_utils.SigningAccount(private_key=private_key)
+
     return algorand.client.get_typed_app_client(
         LiveProofClient,
         app_id=int(os.getenv("APP_ID", 1002)),
         default_sender=account.address,
         default_signer=account.signer,
     )
-
 # ── Models ────────────────────────────────────────────────────────────────────
 
 class AnchorRequest(BaseModel):

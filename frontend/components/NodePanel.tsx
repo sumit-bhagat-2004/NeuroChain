@@ -83,24 +83,21 @@ export default function NodePanel({ node, onClose }: NodePanelProps) {
         </div>
 
         {/* Embedding Preview */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-400 mb-1">
-            Embedding Vector
-          </h3>
-          <div className="bg-gray-800 p-2 rounded">
-            <p className="text-white font-mono text-xs">
-              [
-              {node.embedding
-                ?.slice(0, 5)
-                .map((v) => v.toFixed(4))
-                .join(", ")}
-              ...]
-            </p>
-            <p className="text-gray-500 text-xs mt-1">
-              Dimension: {node.embedding?.length}
-            </p>
+        {node.embedding && node.embedding.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 mb-1">
+              Embedding Vector
+            </h3>
+            <div className="bg-gray-800 p-2 rounded">
+              <p className="text-white font-mono text-xs">
+                [{node.embedding.slice(0, 5).map((v) => v.toFixed(4)).join(", ")}...]
+              </p>
+              <p className="text-gray-500 text-xs mt-1">
+                Dimension: {node.embedding.length}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Algorand Proof Section ── */}
         <div className="border border-purple-800 rounded-lg overflow-hidden">
