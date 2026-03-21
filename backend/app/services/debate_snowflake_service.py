@@ -57,24 +57,27 @@ async def initialize_debate_tables() -> None:
 @async_snowflake
 def _insert_debate_node_sync(node: DebateNode) -> None:
     """Insert debate node into database."""
-    embedding_str = "[" + ",".join(str(x) for x in node.embedding) + "]"
+    # Convert embedding to JSON array string (same as original backend)
+    embedding_json = json.dumps(node.embedding)
+    
     merge_history_json = json.dumps([m.model_dump() for m in node.merge_history])
     speakers_json = json.dumps(node.speakers)
 
+    # Use PARSE_JSON like the original backend does
     sql = """
         INSERT INTO debate_nodes (
             id, primary_text, accumulated_text, embedding,
             created_at, last_updated, merge_count,
             merge_history, speakers
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (?, ?, ?, TO_VECTOR(PARSE_JSON(?), 768, 'FLOAT'), ?, ?, ?, ?, ?)
     """
 
     _execute_non_query(sql, [
         node.id,
         node.primary_text,
         node.accumulated_text,
-        embedding_str,
+        embedding_json,
         node.created_at,
         node.last_updated,
         node.merge_count,
@@ -91,25 +94,28 @@ async def insert_debate_node(node: DebateNode) -> None:
 @async_snowflake
 def _update_debate_node_sync(node: DebateNode) -> None:
     """Update existing debate node."""
-    embedding_str = "[" + ",".join(str(x) for x in node.embedding) + "]"
+    # Convert embedding to JSON array string (same as original backend)
+    embedding_json = json.dumps(node.embedding)
+    
     merge_history_json = json.dumps([m.model_dump() for m in node.merge_history])
     speakers_json = json.dumps(node.speakers)
 
+    # Use PARSE_JSON like the original backend does
     sql = """
         UPDATE debate_nodes
         SET
-            accumulated_text = %s,
-            embedding = %s,
-            last_updated = %s,
-            merge_count = %s,
-            merge_history = %s,
-            speakers = %s
-        WHERE id = %s
+            accumulated_text = ?,
+            embedding = TO_VECTOR(PARSE_JSON(?), 768, 'FLOAT'),
+            last_updated = ?,
+            merge_count = ?,
+            merge_history = ?,
+            speakers = ?
+        WHERE id = ?
     """
 
     _execute_non_query(sql, [
         node.accumulated_text,
-        embedding_str,
+        embedding_json,
         node.last_updated,
         node.merge_count,
         merge_history_json,

@@ -7,6 +7,7 @@ from functools import wraps
 from typing import List, Optional, Dict, Any, Tuple
 import snowflake.connector
 from snowflake.connector import DictCursor
+import json
 
 from app.config import settings
 from app.models.node import GraphNode
@@ -122,15 +123,16 @@ async def initialize_tables() -> None:
 @async_snowflake
 def _insert_node_sync(node: GraphNode) -> None:
     """Insert node into database."""
-    # Convert embedding list to Snowflake array format
-    embedding_str = "[" + ",".join(str(x) for x in node.embedding) + "]"
+    # Convert embedding to JSON array string
+    embedding_json = json.dumps(node.embedding)
 
+    # Use TO_VECTOR(PARSE_JSON()) to properly convert to VECTOR type
     sql = """
         INSERT INTO nodes (id, text, timestamp, embedding)
-        VALUES (%s, %s, %s, %s)
+        VALUES (?, ?, ?, TO_VECTOR(PARSE_JSON(?), 768, 'FLOAT'))
     """
 
-    _execute_non_query(sql, [node.id, node.text, node.timestamp, embedding_str])
+    _execute_non_query(sql, [node.id, node.text, node.timestamp, embedding_json])
 
 
 async def insert_node(node: GraphNode) -> None:
@@ -168,7 +170,8 @@ def _fetch_candidates_by_vector_sync(
     exclude_id: str
 ) -> List[CandidateNode]:
     """Fetch candidate nodes via vector similarity search."""
-    embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+    # Convert embedding to JSON array string
+    embedding_json = json.dumps(embedding)
 
     sql = """
         SELECT
@@ -176,14 +179,14 @@ def _fetch_candidates_by_vector_sync(
             text,
             timestamp,
             embedding,
-            VECTOR_COSINE_SIMILARITY(embedding, TO_VECTOR(?, 768, 'FLOAT')) AS similarity
+            VECTOR_COSINE_SIMILARITY(embedding, TO_VECTOR(PARSE_JSON(?), 768, 'FLOAT')) AS similarity
         FROM nodes
         WHERE id != ?
         ORDER BY similarity DESC
         LIMIT ?
     """
 
-    results = _execute_query(sql, [embedding_str, exclude_id, limit])
+    results = _execute_query(sql, [embedding_json, exclude_id, limit])
 
     candidates = []
     for row in results:
@@ -213,7 +216,7 @@ async def fetch_candidates_by_vector(
 @async_snowflake
 def _generate_embedding_via_snowflake_sync(text: str) -> List[float]:
     """Generate embedding via Snowflake Cortex."""
-    sql = "SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_768('snowflake-arctic-embed-m-v1.5', %s) AS embedding"
+    sql = "SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_768('snowflake-arctic-embed-m-v1.5', ?) AS embedding"
 
     results = _execute_query(sql, [text])
 
@@ -224,7 +227,6 @@ def _generate_embedding_via_snowflake_sync(text: str) -> List[float]:
 
     # Ensure it's a list of floats
     if isinstance(embedding, str):
-        import json
         embedding = json.loads(embedding)
 
     return embedding
