@@ -1,0 +1,36 @@
+{
+  "name": "transcribe",
+  "request": {
+    "type": "http",
+    "url": "http://143.244.129.88:6500/transcribe",
+    "scripts": {
+      "preRequest": "",
+      "postResponse": ""
+    },
+    "method": "POST",
+    "queryParams": [],
+    "headers": [],
+    "body": [
+      {
+        "id": 1774113446740,
+        "key": "file",
+        "value": [
+          {
+            "id": "test.mp3-1774113523296",
+            "name": "test.mp3",
+            "path": "D:\\Hackathons\\SBH\\Lingua.IO_SBH\\server\\whisper\\test.mp3",
+            "size": 168872,
+            "source": "desktop"
+          }
+        ],
+        "isEnabled": true,
+        "type": "file"
+      }
+    ],
+    "contentType": "multipart/form-data",
+    "auth": {
+      "currentAuthType": "INHERIT",
+      "authConfigStore": {}
+    }
+  }
+}

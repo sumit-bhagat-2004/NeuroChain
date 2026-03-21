@@ -6,7 +6,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "SYNC_WALLET") {
         chrome.storage.local.set({ neurochain_wallet: message.wallet }, () => {
             console.log("NeuroChain Wallet Synced:", message.wallet);
+            sendResponse({ status: "success" });
         });
+        return true; // Keep message channel open for async response
     }
 
     // 2. Handle Data from Google Meet
@@ -21,8 +23,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 author_wallet: wallet
             };
 
-            // Call FastAPI Backend (Ensure your backend has CORS enabled for chrome-extension origins or * )
-            fetch("http://localhost:8000/api/nodes/", {
+            // Call FastAPI Backend
+            fetch("http://0.0.0.0:8000/api/nodes/", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -30,8 +32,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 body: JSON.stringify(payload)
             })
             .then(res => res.json())
-            .then(data => console.log("Node successfully mined to NeuroChain:", data))
-            .catch(err => console.error("NeuroChain API Error:", err));
+            .then(data => {
+                console.log("Node successfully mined to NeuroChain:", data);
+                sendResponse({ status: "success", data: data });
+            })
+            .catch(err => {
+                console.error("NeuroChain API Error:", err);
+                sendResponse({ status: "error", message: err.toString() });
+            });
         });
+
+        // CRITICAL FIX: Tell Chrome we will send the response asynchronously!
+        return true; 
     }
 });
