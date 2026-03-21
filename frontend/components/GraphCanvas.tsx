@@ -12,11 +12,12 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
 interface GraphCanvasProps {
   data: GraphData;
   onNodeClick?: (node: Node) => void;
+  onLinkClick?: (link: any) => void;
   selectedNodeId?: string | null;
   newNodeId?: string | null;
 }
 
-export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNodeId }: GraphCanvasProps) {
+export default function GraphCanvas({ data, onNodeClick, onLinkClick, selectedNodeId, newNodeId }: GraphCanvasProps) {
   const graphRef = useRef<any>(null);
 
   const handleNodeClick = useCallback((node: any) => {
@@ -24,6 +25,22 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
       onNodeClick(node as Node);
     }
   }, [onNodeClick]);
+
+  const handleLinkClick = useCallback((link: any) => {
+    if (onLinkClick) {
+      onLinkClick(link);
+    } else {
+      // Default behavior: show link info in console
+      console.log('Link clicked:', {
+        source: typeof link.source === 'object' ? link.source.id : link.source,
+        target: typeof link.target === 'object' ? link.target.id : link.target,
+        score: link.score,
+        semantic: link.semantic,
+        keyword: link.keyword,
+        time: link.time
+      });
+    }
+  }, [onLinkClick]);
 
   const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
     // Safety check: ensure node has valid coordinates
@@ -121,7 +138,21 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
           ctx.fill();
         }}
         linkCanvasObject={paintLink}
+        linkPointerAreaPaint={(link, color, ctx) => {
+          // Define clickable area for links
+          const start = link.source;
+          const end = link.target;
+          if (!start || !end || !isFinite(start.x!) || !isFinite(start.y!) || !isFinite(end.x!) || !isFinite(end.y!)) return;
+
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3; // Wider for easier clicking
+          ctx.beginPath();
+          ctx.moveTo(start.x!, start.y!);
+          ctx.lineTo(end.x!, end.y!);
+          ctx.stroke();
+        }}
         onNodeClick={handleNodeClick}
+        onLinkClick={handleLinkClick}
         linkDirectionalParticles={2}
         linkDirectionalParticleWidth={2}
         linkDirectionalParticleSpeed={0.005}

@@ -231,7 +231,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="absolute top-[73px] bottom-[100px] left-0 right-0">
+      <div className="absolute top-[73px] bottom-0 left-0 right-0">
         <GraphCanvas
           data={graphData}
           onNodeClick={handleNodeClick}
