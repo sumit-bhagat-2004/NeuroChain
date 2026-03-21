@@ -27,7 +27,7 @@ import httpx
 
 
 
-async def create_node_handler(text: str) -> CreateNodeResponse:
+async def create_node_handler(text: str, source: str = None, contributor: str = None) -> CreateNodeResponse:
     """
     POST /node — Create a new node from text input.
 
@@ -55,7 +55,7 @@ async def create_node_handler(text: str) -> CreateNodeResponse:
             raise HTTPException(status_code=400, detail="Text must be non-empty")
 
         trimmed_text = text.strip()
-        logger.info(f"Creating node for text: \"{trimmed_text[:80]}...\"")
+        logger.info(f"Processing thought from {contributor or 'anonymous'} via {source or 'api'}: \"{trimmed_text[:80]}...\"")
 
         # 1. Generate embedding
         embedding = await generate_embedding(trimmed_text)
