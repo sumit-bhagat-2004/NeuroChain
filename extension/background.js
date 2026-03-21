@@ -34,6 +34,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .then(res => res.json())
             .then(data => {
                 console.log("Node successfully mined to NeuroChain:", data);
+
+                // Log evolution information if available
+                if (data.action === "merged" && data.merge_count > 0) {
+                    console.log(`💡 Thought evolved! (${data.merge_count} evolution${data.merge_count > 1 ? "s" : ""}, creativity: ${(data.creativity_score * 100).toFixed(0)}%)`);
+                }
+
+                // Log similarity breakdown if available
+                if (data.similarity_breakdown) {
+                    console.log("Similarity breakdown:", {
+                        semantic: (data.similarity_breakdown.semantic * 100).toFixed(0) + "%",
+                        keyword: (data.similarity_breakdown.keyword * 100).toFixed(0) + "%",
+                        fuzzy: (data.similarity_breakdown.fuzzy * 100).toFixed(0) + "%",
+                        confidence: data.similarity_breakdown.confidence
+                    });
+                }
+
                 sendResponse({ status: "success", data: data });
             })
             .catch(err => {

@@ -26,6 +26,11 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
   }, [onNodeClick]);
 
   const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    // Safety check: ensure node has valid coordinates
+    if (!isFinite(node.x) || !isFinite(node.y)) {
+      return; // Skip rendering if coordinates are invalid
+    }
+
     const label = node.text;
     const fontSize = 12 / globalScale;
     const isSelected = node.id === selectedNodeId;
@@ -67,18 +72,24 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
     const start = link.source;
     const end = link.target;
 
+    // Safety check: ensure start and end have valid coordinates
+    if (!start || !end || !isFinite(start.x) || !isFinite(start.y) || !isFinite(end.x) || !isFinite(end.y)) {
+      return; // Skip rendering if coordinates are invalid
+    }
+
     // Draw link
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
 
-    // Color based on score
-    const alpha = Math.min(link.score, 1);
+    // Color based on score (use semantic score for primary color)
+    const semanticScore = link.semantic || link.score || 0;
+    const alpha = Math.min(semanticScore, 1);
     ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
     ctx.lineWidth = 1 / globalScale;
     ctx.stroke();
 
-    // Draw directional particles
+    // Draw score label showing overall score
     const textPos = Object.assign({}, ...['x', 'y'].map(c => ({
       [c]: start[c] + (end[c] - start[c]) / 2
     })));
@@ -87,7 +98,10 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#9ca3af';
-    ctx.fillText((link.score * 100).toFixed(0) + '%', textPos.x, textPos.y);
+
+    // Show overall score (or semantic if that's the primary)
+    const displayScore = link.score || semanticScore;
+    ctx.fillText((displayScore * 100).toFixed(0) + '%', textPos.x, textPos.y);
   }, []);
 
   return (
@@ -97,6 +111,15 @@ export default function GraphCanvas({ data, onNodeClick, selectedNodeId, newNode
         graphData={data}
         nodeLabel="text"
         nodeCanvasObject={paintNode}
+        nodePointerAreaPaint={(node, color, ctx) => {
+          // Define clickable area for nodes
+          // Safety check for valid coordinates
+          if (!isFinite(node.x!) || !isFinite(node.y!)) return;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(node.x!, node.y!, 5, 0, 2 * Math.PI);
+          ctx.fill();
+        }}
         linkCanvasObject={paintLink}
         onNodeClick={handleNodeClick}
         linkDirectionalParticles={2}

@@ -89,8 +89,25 @@ export default function Home() {
         links: [...prev.links, ...response.connections],
       }));
 
-      // Show success message (could be replaced with a toast notification)
-      console.log("Node added successfully:", response.node.id);
+      // Highlight new node
+      setNewNodeId(response.node.id);
+      setTimeout(() => setNewNodeId(null), 3000);
+
+      // Log evolution info
+      console.log("Node added successfully:", {
+        id: response.node.id,
+        action: response.action,
+        creativity_score: response.creativity_score,
+        merge_count: response.merge_count,
+        similarity_breakdown: response.similarity_breakdown,
+      });
+
+      // Show success message with evolution info
+      if (response.action === "merged" && response.merge_count > 0) {
+        console.log(
+          `💡 Thought evolved! (${response.merge_count} evolution${response.merge_count > 1 ? "s" : ""}, creativity: ${(response.creativity_score * 100).toFixed(0)}%)`
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create node");
       console.error("Error creating node:", err);
@@ -111,31 +128,41 @@ export default function Home() {
     if (graphData.nodes.length === 0) return;
 
     setIsReplayMode(true);
+
+    // Store the original data before clearing
+    const originalNodes = [...graphData.nodes];
+    const originalLinks = [...graphData.links];
+
     setGraphData({ nodes: [], links: [] });
 
     // Sort nodes by timestamp
-    const sortedNodes = [...graphData.nodes].sort(
+    const sortedNodes = originalNodes.sort(
       (a, b) => a.timestamp - b.timestamp,
     );
-    const allLinks = [...graphData.links];
+
+    // Keep track of added node IDs
+    const addedNodeIds = new Set<string>();
 
     // Replay nodes one by one
     for (let i = 0; i < sortedNodes.length; i++) {
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       const currentNode = sortedNodes[i];
-      const relevantLinks = allLinks.filter(
-        (link) =>
-          (typeof link.source === "string" ? link.source : link.source.id) ===
-            currentNode.id ||
-          (typeof link.target === "string" ? link.target : link.target.id) ===
-            currentNode.id,
-      );
+      addedNodeIds.add(currentNode.id);
 
-      setGraphData((prev) => ({
-        nodes: [...prev.nodes, currentNode],
-        links: [...prev.links, ...relevantLinks],
-      }));
+      // Only add links where BOTH source and target are now in the graph
+      const relevantLinks = originalLinks.filter((link) => {
+        const sourceId = typeof link.source === "string" ? link.source : link.source.id;
+        const targetId = typeof link.target === "string" ? link.target : link.target.id;
+
+        // Link should be added if both nodes are now in the graph
+        return addedNodeIds.has(sourceId) && addedNodeIds.has(targetId);
+      });
+
+      setGraphData({
+        nodes: sortedNodes.slice(0, i + 1),
+        links: relevantLinks,
+      });
     }
 
     setIsReplayMode(false);
