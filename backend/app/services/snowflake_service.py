@@ -40,6 +40,8 @@ def _get_connection() -> snowflake.connector.SnowflakeConnection:
             user=settings.snowflake_username,
             password=settings.snowflake_password,
             warehouse=settings.snowflake_warehouse,
+            database=settings.snowflake_database,
+            schema=settings.snowflake_schema,
         )
         logger.info("Snowflake connection established")
 

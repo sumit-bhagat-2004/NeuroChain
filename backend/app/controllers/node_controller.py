@@ -42,6 +42,8 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
 
     Args:
         text: Input text
+        source: Where input came from (meet_voice, meet_chat, manual, etc.)
+        contributor: Optional contributor identifier (wallet address, username, etc.)
 
     Returns:
         CreateNodeResponse with node and edges
@@ -55,17 +57,26 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
             raise HTTPException(status_code=400, detail="Text must be non-empty")
 
         trimmed_text = text.strip()
-        logger.info(f"Processing thought from {contributor or 'anonymous'} via {source or 'api'}: \"{trimmed_text[:80]}...\"")
+        logger.info(f"Processing node from {contributor or 'anonymous'} via {source or 'api'}: \"{trimmed_text[:80]}...\"")
 
         # 1. Generate embedding
         embedding = await generate_embedding(trimmed_text)
 
-        # 2. Create and store node
+        ts = now_timestamp()
+
+        # 2. Create and store node (with all evolution-tracking fields populated)
         node = GraphNode(
             id=str(uuid4()),
             text=trimmed_text,
-            timestamp=now_timestamp(),
+            timestamp=ts,
             embedding=embedding,
+            primary_text=trimmed_text,
+            accumulated_text=trimmed_text,
+            merge_count=0,
+            evolution_history=[],
+            contributors=[contributor] if contributor else [],
+            creativity_score=1.0,   # Brand new thought — fully creative
+            last_updated=ts,
         )
 
         await insert_node(node)
@@ -116,36 +127,17 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
             ],
         })
 
-        # 7. Return response (exclude raw embedding for brevity)
-        # 8. Trigger full graph re-evaluation in background (continuous compute)
-        logger.info(f"Triggering background re-evaluation for node {node.id}")
-        trigger_full_graph_reevaluation.schedule(args=(node.id,), delay=5)
-
-        # 9. Analyze thought evolution
-        evolution_analysis = analyze_thought_evolution(node)
-
-        # 10. Prepare similarity breakdown for response
-        from app.models.types import SimilarityBreakdown
-
-        similarity_breakdown = None
-        if similarity_result:
-            similarity_breakdown = SimilarityBreakdown(
-                semantic=similarity_result.semantic,
-                keyword=similarity_result.keyword,
-                fuzzy=similarity_result.fuzzy,
-                edit_distance=similarity_result.edit_distance,
-                length_ratio=similarity_result.length_ratio,
-                token_overlap=similarity_result.token_overlap,
-                composite_score=similarity_result.composite_score,
-                confidence=similarity_result.confidence,
-            )
-
-        # 11. Return response with evolution info and similarity breakdown
+        # 7. Return response
         return CreateNodeResponse(
             node=NodeResponse(
                 id=node.id,
                 text=node.text,
                 timestamp=node.timestamp,
+                primary_text=node.primary_text,
+                accumulated_text=node.accumulated_text,
+                merge_count=node.merge_count,
+                creativity_score=node.creativity_score,
+                contributors=node.contributors,
             ),
             edges=[
                 EdgeResponse(
@@ -158,14 +150,12 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
                 )
                 for e in edges
             ],
-            # Add evolution tracking info
-            action=node_action,  # "created" or "merged"
+            action="created",
             merge_count=node.merge_count,
             creativity_score=node.creativity_score,
             contributors=node.contributors,
-            evolution_analysis=evolution_analysis,
-            # Add 6-step similarity breakdown
-            similarity_breakdown=similarity_breakdown,
+            evolution_analysis=None,
+            similarity_breakdown=None,
         )
 
     except HTTPException:
@@ -178,6 +168,7 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
         status_code = 502 if "embedding" in message.lower() else 500
 
         raise HTTPException(status_code=status_code, detail=message)
+
 
 
 async def get_graph_handler() -> dict:
@@ -202,6 +193,11 @@ async def get_graph_handler() -> dict:
                     id=n.id,
                     text=n.text,
                     timestamp=n.timestamp,
+                    primary_text=n.primary_text,
+                    accumulated_text=n.accumulated_text,
+                    merge_count=n.merge_count,
+                    creativity_score=n.creativity_score,
+                    contributors=n.contributors,
                 )
                 for n in nodes
             ],
@@ -256,6 +252,11 @@ async def get_node_details_handler(node_id: str) -> dict:
                 id=node.id,
                 text=node.text,
                 timestamp=node.timestamp,
+                primary_text=node.primary_text,
+                accumulated_text=node.accumulated_text,
+                merge_count=node.merge_count,
+                creativity_score=node.creativity_score,
+                contributors=node.contributors,
             ),
             "edges": [
                 EdgeResponse(

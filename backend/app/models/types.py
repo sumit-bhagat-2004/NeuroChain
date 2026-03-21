@@ -28,6 +28,11 @@ class NodeResponse(BaseModel):
     id: str
     text: str
     timestamp: int
+    primary_text: Optional[str] = None
+    accumulated_text: Optional[str] = None
+    merge_count: int = 0
+    creativity_score: float = 0.0
+    contributors: List[str] = []
 
 
 class EdgeResponse(BaseModel):
