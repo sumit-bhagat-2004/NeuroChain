@@ -2,7 +2,7 @@
 Routes — API route definitions for the Cognitive Graph Engine.
 """
 
-from fastapi import APIRouter, Body, Query
+from fastapi import APIRouter, Body
 from typing import Optional
 from app.controllers.node_controller import (
     create_node_handler,
@@ -16,8 +16,9 @@ router = APIRouter(tags=["nodes"])
 
 @router.post("/node", status_code=201)
 async def create_node(
-    text: str = Body(..., embed=True),
-    contributor: Optional[str] = Body(None, embed=True)
+    text: str = Body(...),
+    source: Optional[str] = Body(None),
+    author_wallet: Optional[str] = Body(None),
 ):
     """
     Create or evolve a thought node with creativity tracking.
@@ -31,7 +32,8 @@ async def create_node(
     Request body:
         {
             "text": "Your thought here",
-            "contributor": "username or wallet address (optional)"
+            "source": "meet_voice|meet_chat|manual (optional)",
+            "author_wallet": "username or wallet address (optional)"
         }
 
     Response:
@@ -45,22 +47,30 @@ async def create_node(
             "evolution_analysis": {...}
         }
     """
-    return await create_node_handler(text, contributor)
+    return await create_node_handler(text, source=source, contributor=author_wallet)
 
 
 @router.post("/api/nodes/", status_code=201)
 async def create_node_from_extension(
     text: str = Body(...),
-    source: str = Body(None),
-    author_wallet: str = Body(None)
+    source: Optional[str] = Body(None),
+    author_wallet: Optional[str] = Body(None),
 ):
     """
     Create a new cognitive graph node from extension input.
 
+    Runs the full 6-layer thought-evolution pipeline:
+    1. Embedding generation (Snowflake Arctic)
+    2. Enhanced similarity search
+    3. Merge-or-create decision
+    4. Edge creation via connection service
+    5. CI pipeline trigger
+    6. Blockchain anchoring (fire-and-forget)
+
     Request body: {"text": "...", "source": "meet_voice|meet_chat", "author_wallet": "..."}
-    Response: {"node": {...}, "edges": [...]}
+    Response: {"node": {...}, "edges": [...], "action": "created"|"merged", ...}
     """
-    return await create_node_handler(text)
+    return await create_node_handler(text, source=source, contributor=author_wallet)
 
 
 @router.get("/graph")

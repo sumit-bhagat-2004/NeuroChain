@@ -18,8 +18,8 @@ from app.utils.logger import logger
 
 # Create FastAPI app
 app = FastAPI(
-    title="Cognitive Graph Engine + Debate Transcription",
-    description="Semantic knowledge graph + debate transcription with smart merging",
+    title="Cognitive Graph Engine",
+    description="Semantic knowledge graph with transcription with smart merging",
     version="2.1.0"
 )
 
