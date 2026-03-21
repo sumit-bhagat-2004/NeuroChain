@@ -22,6 +22,8 @@ from app.services.ci_service import run_ci_pipeline
 from app.config import settings
 from app.utils.time_utils import now_timestamp
 from app.utils.logger import logger
+import httpx
+
 
 
 async def create_node_handler(text: str) -> CreateNodeResponse:
@@ -218,3 +220,22 @@ async def get_node_details_handler(node_id: str) -> dict:
             status_code=500,
             detail=str(error)
         )
+
+async def _anchor_on_chain(node_id: str, text: str, embedding: list[float]):
+    """Fire-and-forget blockchain anchoring."""
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                "http://localhost:8001/anchor",
+                json={
+                    "node_id": node_id,
+                    "text": text,
+                    "embedding": embedding,
+                },
+                timeout=10.0,
+            )
+    except Exception as e:
+        logger.warning(f"Blockchain anchoring failed (non-fatal): {e}")
+
+# Add this line in create_node_handler after insert_node:
+asyncio.create_task(_anchor_on_chain(node.id, node.text, node.embedding))

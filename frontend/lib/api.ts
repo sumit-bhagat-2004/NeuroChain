@@ -1,12 +1,12 @@
-import { CreateNodeRequest, CreateNodeResponse, GraphData } from './types';
+import { CreateNodeRequest, CreateNodeResponse, GraphData } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function createNode(text: string): Promise<CreateNodeResponse> {
   const response = await fetch(`${API_BASE_URL}/node`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ text } as CreateNodeRequest),
   });
@@ -20,9 +20,9 @@ export async function createNode(text: string): Promise<CreateNodeResponse> {
 
 export async function getGraph(): Promise<GraphData> {
   const response = await fetch(`${API_BASE_URL}/graph`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 
@@ -35,9 +35,9 @@ export async function getGraph(): Promise<GraphData> {
 
 export async function getNode(id: string): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/node/${id}`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 
@@ -46,4 +46,21 @@ export async function getNode(id: string): Promise<any> {
   }
 
   return response.json();
+}
+
+export async function getProof(nodeId: string): Promise<{
+  node_id: string;
+  text_hash: string;
+  embedding_hash: string;
+  timestamp: number;
+  creator: string;
+  app_id: number;
+} | null> {
+  try {
+    const response = await fetch(`http://localhost:8001/proof/${nodeId}`);
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
 }
