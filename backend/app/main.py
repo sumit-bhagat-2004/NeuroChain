@@ -1,5 +1,5 @@
 """
-Main — FastAPI application entry point.
+Main — FastAPI application entry point with debate support.
 """
 
 from fastapi import FastAPI
@@ -8,16 +8,18 @@ from datetime import datetime
 
 from app.config import settings
 from app.routes.nodes import router as nodes_router
+from app.routes.debate import router as debate_router  # NEW
 from app.services.snowflake_service import initialize_tables
+from app.services.debate_snowflake_service import initialize_debate_tables  # NEW
 from app.services.embedding_service import init_embedding_cache
 from app.utils.logger import logger
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="Cognitive Graph Engine",
-    description="Semantic knowledge graph powered by Snowflake Arctic Embed",
-    version="2.0.0"
+    title="Cognitive Graph Engine + Debate Transcription",
+    description="Semantic knowledge graph + debate transcription with smart merging",
+    version="2.1.0"
 )
 
 
@@ -34,7 +36,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup."""
-    logger.info("Starting Cognitive Graph Engine...")
+    logger.info("Starting Cognitive Graph Engine + Debate System...")
 
     # Initialize embedding cache
     init_embedding_cache(settings.embedding_cache_capacity)
@@ -42,6 +44,7 @@ async def startup_event():
     # Connect to Snowflake and initialize tables
     logger.info("Connecting to Snowflake...")
     await initialize_tables()
+    await initialize_debate_tables()  # NEW
 
     # Log configuration
     logger.info(f"Configuration loaded:")
@@ -50,17 +53,22 @@ async def startup_event():
     logger.info(f"  - Time decay half-life: {settings.time_decay_halflife}ms")
     logger.info(f"  - Candidate limit: {settings.candidate_limit}")
     logger.info(f"  - Cache capacity: {settings.embedding_cache_capacity}")
+    logger.info(f"  - Debate merge threshold: 0.75")  # NEW
 
-    logger.info("Cognitive Graph Engine ready!")
+    logger.info("Cognitive Graph Engine + Debate System ready!")
 
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
-        "service": "Cognitive Graph Engine",
-        "version": "2.0.0",
-        "status": "running"
+        "service": "Cognitive Graph Engine + Debate Transcription",
+        "version": "2.1.0",
+        "status": "running",
+        "features": {
+            "knowledge_graph": "Standard node + edge system",
+            "debate_transcription": "Smart merge system for similar content"
+        }
     }
 
 
@@ -70,10 +78,11 @@ async def health_check():
     return {
         "status": "ok",
         "timestamp": datetime.now().isoformat(),
-        "engine": "Cognitive Graph Engine",
-        "version": "2.0.0"
+        "engine": "Cognitive Graph Engine + Debate",
+        "version": "2.1.0"
     }
 
 
 # Include routers
 app.include_router(nodes_router)
+app.include_router(debate_router)
