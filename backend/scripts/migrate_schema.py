@@ -10,7 +10,11 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.snowflake_service import get_connection
+from dotenv import load_dotenv
+load_dotenv()
+
+from app.services.snowflake_service import _get_connection
+from app.config import settings
 from app.utils.logger import logger
 
 
@@ -19,8 +23,12 @@ def migrate_schema():
 
     logger.info("Starting schema migration...")
 
-    conn = get_connection()
+    conn = _get_connection()
     cursor = conn.cursor()
+
+    # Set database and schema context
+    cursor.execute(f"USE DATABASE {settings.snowflake_database}")
+    cursor.execute(f"USE SCHEMA {settings.snowflake_schema}")
 
     try:
         # Check if columns already exist
@@ -90,7 +98,6 @@ def migrate_schema():
 
     finally:
         cursor.close()
-        conn.close()
 
 
 if __name__ == "__main__":

@@ -73,6 +73,22 @@ async def create_node_from_extension(
     return await create_node_handler(text, source=source, contributor=author_wallet)
 
 
+@router.get("/api/nodes/")
+async def list_nodes():
+    """
+    List all cognitive graph nodes and their edges.
+
+    Returns nodes created via POST /node or POST /api/nodes/ (not debate nodes).
+
+    Response:
+        {
+            "nodes": [...],
+            "edges": [...]
+        }
+    """
+    return await get_graph_handler()
+
+
 @router.get("/graph")
 async def get_graph():
     """
@@ -81,6 +97,7 @@ async def get_graph():
     Response: {"nodes": [...], "edges": [...]}
     """
     return await get_graph_handler()
+
 
 
 @router.get("/node/{node_id}")

@@ -191,7 +191,23 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
         # 9. Analyze thought evolution
         evolution_analysis = analyze_thought_evolution(node)
 
-        # 10. Return response with evolution info
+        # 10. Prepare similarity breakdown for response
+        from app.models.types import SimilarityBreakdown
+
+        similarity_breakdown = None
+        if similarity_result:
+            similarity_breakdown = SimilarityBreakdown(
+                semantic=similarity_result.semantic,
+                keyword=similarity_result.keyword,
+                fuzzy=similarity_result.fuzzy,
+                edit_distance=similarity_result.edit_distance,
+                length_ratio=similarity_result.length_ratio,
+                token_overlap=similarity_result.token_overlap,
+                composite_score=similarity_result.composite_score,
+                confidence=similarity_result.confidence,
+            )
+
+        # 11. Return response with evolution info and similarity breakdown
         return CreateNodeResponse(
             node=NodeResponse(
                 id=node.id,
@@ -215,6 +231,8 @@ async def create_node_handler(text: str, source: str = None, contributor: str = 
             creativity_score=node.creativity_score,
             contributors=node.contributors,
             evolution_analysis=evolution_analysis,
+            # Add 6-step similarity breakdown
+            similarity_breakdown=similarity_breakdown,
         )
 
     except HTTPException:

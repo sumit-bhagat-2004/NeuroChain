@@ -100,3 +100,4 @@ async def get_debate_stats():
     }
     """
     return await get_debate_stats_handler()
+
