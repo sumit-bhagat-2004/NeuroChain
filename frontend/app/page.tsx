@@ -1,14 +1,18 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import GraphCanvas from '@/components/GraphCanvas';
-import NodePanel from '@/components/NodePanel';
-import InputBar from '@/components/InputBar';
-import { GraphData, Node } from '@/lib/types';
-import { createNode, getGraph } from '@/lib/api';
+import { useState, useEffect } from "react";
+import GraphCanvas from "@/components/GraphCanvas";
+import NodePanel from "@/components/NodePanel";
+import InputBar from "@/components/InputBar";
+import { GraphData, Node } from "@/lib/types";
+import { createNode, getGraph } from "@/lib/api";
+import ConnectButton from "@/components/ConnectButton";
 
 export default function Home() {
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [graphData, setGraphData] = useState<GraphData>({
+    nodes: [],
+    links: [],
+  });
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +28,7 @@ export default function Home() {
       const data = await getGraph();
       setGraphData(data);
     } catch (err) {
-      console.error('Failed to load graph:', err);
+      console.error("Failed to load graph:", err);
       // Initialize with empty graph if backend is not available
       setGraphData({ nodes: [], links: [] });
     }
@@ -38,16 +42,16 @@ export default function Home() {
       const response = await createNode(text);
 
       // Update graph data with new node and connections
-      setGraphData(prev => ({
+      setGraphData((prev) => ({
         nodes: [...prev.nodes, response.node],
         links: [...prev.links, ...response.connections],
       }));
 
       // Show success message (could be replaced with a toast notification)
-      console.log('Node added successfully:', response.node.id);
+      console.log("Node added successfully:", response.node.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create node');
-      console.error('Error creating node:', err);
+      setError(err instanceof Error ? err.message : "Failed to create node");
+      console.error("Error creating node:", err);
     } finally {
       setIsLoading(false);
     }
@@ -68,21 +72,25 @@ export default function Home() {
     setGraphData({ nodes: [], links: [] });
 
     // Sort nodes by timestamp
-    const sortedNodes = [...graphData.nodes].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedNodes = [...graphData.nodes].sort(
+      (a, b) => a.timestamp - b.timestamp,
+    );
     const allLinks = [...graphData.links];
 
     // Replay nodes one by one
     for (let i = 0; i < sortedNodes.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await new Promise((resolve) => setTimeout(resolve, 400));
 
       const currentNode = sortedNodes[i];
       const relevantLinks = allLinks.filter(
-        link =>
-          (typeof link.source === 'string' ? link.source : link.source.id) === currentNode.id ||
-          (typeof link.target === 'string' ? link.target : link.target.id) === currentNode.id
+        (link) =>
+          (typeof link.source === "string" ? link.source : link.source.id) ===
+            currentNode.id ||
+          (typeof link.target === "string" ? link.target : link.target.id) ===
+            currentNode.id,
       );
 
-      setGraphData(prev => ({
+      setGraphData((prev) => ({
         nodes: [...prev.nodes, currentNode],
         links: [...prev.links, ...relevantLinks],
       }));
@@ -131,7 +139,7 @@ export default function Home() {
                 disabled={isReplayMode || graphData.nodes.length === 0}
                 className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
               >
-                {isReplayMode ? 'Replaying...' : 'Replay'}
+                {isReplayMode ? "Replaying..." : "Replay"}
               </button>
               <button
                 onClick={handleReset}
@@ -143,6 +151,8 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        <ConnectButton />
 
         {/* Error Message */}
         {error && (

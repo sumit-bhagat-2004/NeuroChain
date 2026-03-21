@@ -15,7 +15,11 @@ export async function createNode(text: string): Promise<CreateNodeResponse> {
     throw new Error(`Failed to create node: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    node: data.node,
+    connections: data.edges || []
+  };
 }
 
 export async function getGraph(): Promise<GraphData> {
@@ -30,7 +34,11 @@ export async function getGraph(): Promise<GraphData> {
     throw new Error(`Failed to fetch graph: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    nodes: data.nodes || [],
+    links: data.edges || []
+  };
 }
 
 export async function getNode(id: string): Promise<any> {
