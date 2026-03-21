@@ -16,6 +16,7 @@ CONTRACT_PATH = Path(__file__).parent.parent / "contracts/projects/contracts"
 sys.path.insert(0, str(CONTRACT_PATH))
 
 import algokit_utils
+from algokit_utils import BoxReference
 from smart_contracts.artifacts.neurochain.live_proof_client import (
     LiveProofClient,
     AnchorProofArgs,
@@ -35,17 +36,15 @@ app.add_middleware(
 def get_client() -> LiveProofClient:
     algorand = algokit_utils.AlgorandClient.from_environment()
 
-    raw_mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
+    # Get the base64-encoded private key (SigningAccount expects base64 string, not bytes)
+    private_key = os.getenv("DEPLOYER_MNEMONIC", "")
 
-    # Decode base64 to get the private key bytes
-    try:
-        private_key = base64.b64decode(raw_mnemonic)
-    except Exception as e:
-        raise ValueError(f"Failed to decode DEPLOYER_MNEMONIC from base64: {e}")
+    if not private_key:
+        raise ValueError("DEPLOYER_MNEMONIC environment variable is not set")
 
     account = algokit_utils.SigningAccount(private_key=private_key)
 
-    return algorand.client.get_typed_app_client(
+    return algorand.client.get_typed_app_client_by_id(
         LiveProofClient,
         app_id=int(os.getenv("APP_ID", 1002)),
         default_sender=account.address,
@@ -104,10 +103,13 @@ def anchor_proof(req: AnchorRequest):
                 timestamp=timestamp,
             ),
             params=algokit_utils.CommonAppCallParams(
-                boxes=[(app_id, f"p_{req.node_id}".encode())],
+                box_references=[BoxReference(app_id, f"p_{req.node_id}".encode())],
             ),
         )
     except Exception as e:
+        print(f"ERROR in anchor_proof: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
     return ProofResponse(
@@ -132,7 +134,7 @@ def get_proof(node_id: str):
         result = client.send.get_proof(
             args=GetProofArgs(node_id=node_id),
             params=algokit_utils.CommonAppCallParams(
-                boxes=[(app_id, f"p_{node_id}".encode())],
+                box_references=[BoxReference(app_id, f"p_{node_id}".encode())],
             ),
         )
         proof = result.abi_return
@@ -157,7 +159,7 @@ def proof_exists(node_id: str):
         result = client.send.proof_exists(
             args=ProofExistsArgs(node_id=node_id),
             params=algokit_utils.CommonAppCallParams(
-                boxes=[(app_id, f"p_{node_id}".encode())],
+                box_references=[BoxReference(app_id, f"p_{node_id}".encode())],
             ),
         )
         return {"node_id": node_id, "exists": result.abi_return}

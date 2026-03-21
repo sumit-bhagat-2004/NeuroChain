@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # Server
     port: int = 3000
 
+     # Algorand / Blockchain
+    app_id: int = 1008
+    deployer_mnemonic: str = ""
+    algod_server: str = "http://localhost"
+    algod_port: int = 4001
+    algod_token: str = "a" * 64
+
     # Engine parameters
     score_threshold: float = 0.7
     max_edges_per_node: int = 3
