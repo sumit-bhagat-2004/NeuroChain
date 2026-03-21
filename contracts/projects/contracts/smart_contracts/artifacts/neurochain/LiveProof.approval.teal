@@ -1,0 +1,258 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 2
+    bytecblock "total" "p_" 0x151f7c75 0x0000
+    // smart_contracts/neurochain/contract.py:20
+    // class LiveProof(ARC4Contract):
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    bz main_create_NoOp@10
+    pushbytess 0xf595ee26 0x7db8835b 0xbafe5b24 0x4682d610 // method "anchor_proof(string,string,string,uint64)void", method "get_proof(string)(string,string,string,uint64,address)", method "proof_exists(string)bool", method "get_total_proofs()uint64"
+    txna ApplicationArgs 0
+    match anchor_proof get_proof proof_exists get_total_proofs
+    err
+
+main_create_NoOp@10:
+    // smart_contracts/neurochain/contract.py:20
+    // class LiveProof(ARC4Contract):
+    pushbytes 0xfd2c93cd // method "initialize()void"
+    txna ApplicationArgs 0
+    match initialize
+    err
+
+
+// smart_contracts.neurochain.contract.LiveProof.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/neurochain/contract.py:35
+    // self.total_proofs.value = UInt64(0)
+    bytec_0 // "total"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/neurochain/contract.py:36
+    // self.owner.value = Txn.sender
+    pushbytes "owner"
+    txn Sender
+    app_global_put
+    // smart_contracts/neurochain/contract.py:32
+    // @arc4.abimethod(allow_actions=["NoOp"], create="require")
+    intc_1 // 1
+    return
+
+
+// smart_contracts.neurochain.contract.LiveProof.anchor_proof[routing]() -> void:
+anchor_proof:
+    // smart_contracts/neurochain/contract.py:38
+    // @arc4.abimethod
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    dup
+    uncover 2
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    dup
+    uncover 2
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 3
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 4
+    dup
+    len
+    pushint 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    // smart_contracts/neurochain/contract.py:51
+    // assert node_id not in self.proofs, "Proof already anchored for this node"
+    bytec_1 // "p_"
+    dig 6
+    concat
+    dup
+    box_len
+    bury 1
+    !
+    assert // Proof already anchored for this node
+    // smart_contracts/neurochain/contract.py:52
+    // assert arc4.String("") != text_hash, "text_hash cannot be empty"
+    bytec_3 // 0x0000
+    dig 5
+    !=
+    assert // text_hash cannot be empty
+    bytec_3 // 0x0000
+    // smart_contracts/neurochain/contract.py:53
+    // assert arc4.String("") != embedding_hash, "embedding_hash cannot be empty"
+    dig 3
+    !=
+    assert // embedding_hash cannot be empty
+    // smart_contracts/neurochain/contract.py:60
+    // creator=arc4.Address(Txn.sender),
+    txn Sender
+    // smart_contracts/neurochain/contract.py:55-61
+    // self.proofs[node_id] = ProofRecord(
+    //     node_id=node_id,
+    //     text_hash=text_hash,
+    //     embedding_hash=embedding_hash,
+    //     timestamp=timestamp,
+    //     creator=arc4.Address(Txn.sender),
+    // )
+    pushint 46
+    uncover 7
+    +
+    dup
+    itob
+    extract 6 2
+    pushbytes 0x002e
+    swap
+    concat
+    swap
+    uncover 6
+    +
+    itob
+    extract 6 2
+    concat
+    uncover 3
+    concat
+    swap
+    concat
+    uncover 4
+    concat
+    uncover 3
+    concat
+    uncover 2
+    concat
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/neurochain/contract.py:63
+    // self.total_proofs.value += UInt64(1)
+    intc_0 // 0
+    bytec_0 // "total"
+    app_global_get_ex
+    assert // check self.total_proofs exists
+    intc_1 // 1
+    +
+    bytec_0 // "total"
+    swap
+    app_global_put
+    // smart_contracts/neurochain/contract.py:38
+    // @arc4.abimethod
+    intc_1 // 1
+    return
+
+
+// smart_contracts.neurochain.contract.LiveProof.get_proof[routing]() -> void:
+get_proof:
+    // smart_contracts/neurochain/contract.py:65
+    // @arc4.abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/neurochain/contract.py:71
+    // assert node_id in self.proofs, "Proof not found"
+    bytec_1 // "p_"
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    assert // Proof not found
+    // smart_contracts/neurochain/contract.py:72
+    // return self.proofs[node_id].copy()
+    box_get
+    pop
+    // smart_contracts/neurochain/contract.py:65
+    // @arc4.abimethod(readonly=True)
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.neurochain.contract.LiveProof.proof_exists[routing]() -> void:
+proof_exists:
+    // smart_contracts/neurochain/contract.py:74
+    // @arc4.abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/neurochain/contract.py:77
+    // return arc4.Bool(node_id in self.proofs)
+    bytec_1 // "p_"
+    swap
+    concat
+    box_len
+    bury 1
+    pushbytes 0x00
+    intc_0 // 0
+    uncover 2
+    setbit
+    // smart_contracts/neurochain/contract.py:74
+    // @arc4.abimethod(readonly=True)
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.neurochain.contract.LiveProof.get_total_proofs[routing]() -> void:
+get_total_proofs:
+    // smart_contracts/neurochain/contract.py:82
+    // return arc4.UInt64(self.total_proofs.value)
+    intc_0 // 0
+    bytec_0 // "total"
+    app_global_get_ex
+    assert // check self.total_proofs exists
+    itob
+    // smart_contracts/neurochain/contract.py:79
+    // @arc4.abimethod(readonly=True)
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
