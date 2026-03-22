@@ -142,6 +142,9 @@ export default function GraphCanvas({ data, onNodeClick, onLinkClick, selectedNo
           // Define clickable area for links
           const start = link.source;
           const end = link.target;
+
+          // Type guard: ensure start and end are objects, not strings
+          if (typeof start === 'string' || typeof end === 'string') return;
           if (!start || !end || !isFinite(start.x!) || !isFinite(start.y!) || !isFinite(end.x!) || !isFinite(end.y!)) return;
 
           ctx.strokeStyle = color;
