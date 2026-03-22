@@ -69,8 +69,9 @@ class MergeRecord(BaseModel):
 
 class DebateNode(BaseModel):
     """A debate node that can accumulate related transcriptions."""
-    
+
     id: str = Field(..., description="UUID v4")
+    session_id: str = Field(..., description="Debate session ID for isolation")
     primary_text: str = Field(..., description="The first/primary transcription text")
     accumulated_text: str = Field(..., description="All merged transcriptions combined")
     embedding: List[float] = Field(
@@ -94,10 +95,10 @@ class DebateNode(BaseModel):
 
 class TranscriptionRequest(BaseModel):
     """Request to add a transcription."""
-    
+
     speaker: str = Field(..., description="Speaker identifier")
     text: str = Field(..., min_length=1, description="Transcription text")
-    debate_id: Optional[str] = Field(default=None, description="Optional debate session ID")
+    session_id: str = Field(..., description="Required debate session ID for privacy isolation")
     timestamp: Optional[int] = Field(default=None, description="Optional custom timestamp")
 
 

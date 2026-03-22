@@ -22,6 +22,7 @@ from app.services.debate_snowflake_service import (
     insert_debate_node,
     update_debate_node,
     get_all_debate_nodes,
+    get_debate_nodes_by_session,
     get_debate_node_by_id,
 )
 from app.utils.time_utils import now_timestamp
@@ -42,13 +43,13 @@ async def process_transcription(
 
     Flow:
     1. Generate embedding for the new text
-    2. Find all existing debate nodes
+    2. Find nodes ONLY in this session (session isolation)
     3. Use enhanced similarity to find best match
     4. If similarity > threshold with any node: MERGE
     5. Otherwise: CREATE new node
 
     Args:
-        request: Transcription request
+        request: Transcription request with session_id
 
     Returns:
         TranscriptionResponse with action taken
@@ -56,19 +57,20 @@ async def process_transcription(
     text = request.text.strip()
     speaker = request.speaker
     timestamp = request.timestamp or now_timestamp()
+    session_id = request.session_id
 
-    logger.info(f"Processing transcription from {speaker}: {text[:50]}...")
+    logger.info(f"Processing transcription from {speaker} in session {session_id}: {text[:50]}...")
 
     # 1. Generate embedding for new text
     embedding = await generate_embedding(text)
 
-    # 2. Get all existing debate nodes
-    existing_nodes = await get_all_debate_nodes()
+    # 2. Get existing debate nodes FOR THIS SESSION ONLY
+    existing_nodes = await get_debate_nodes_by_session(session_id)
 
     if not existing_nodes:
-        # No existing nodes - create first one
-        logger.info("No existing nodes, creating first debate node")
-        return await _create_new_debate_node(text, speaker, embedding, timestamp)
+        # No existing nodes in this session - create first one
+        logger.info(f"No existing nodes in session {session_id}, creating first debate node")
+        return await _create_new_debate_node(text, speaker, embedding, timestamp, session_id)
 
     # 3. Find best matching node using enhanced similarity
     best_match, similarity_result = find_best_debate_match_enhanced(
@@ -82,7 +84,7 @@ async def process_transcription(
     if best_match and similarity_result and similarity_result.is_duplicate:
         # MERGE with existing node
         logger.info(
-            f"Merging with node {best_match.id} "
+            f"Merging with node {best_match.id} in session {session_id} "
             f"(confidence: {similarity_result.confidence}, "
             f"composite: {similarity_result.composite_score:.3f}, "
             f"semantic: {similarity_result.semantic:.3f}, "
@@ -100,10 +102,10 @@ async def process_transcription(
         # CREATE new node
         best_score = similarity_result.composite_score if similarity_result else 0.0
         logger.info(
-            f"Creating new node (best composite similarity: {best_score:.3f} "
+            f"Creating new node in session {session_id} (best composite similarity: {best_score:.3f} "
             f"< threshold: {MERGE_SIMILARITY_THRESHOLD})"
         )
-        return await _create_new_debate_node(text, speaker, embedding, timestamp)
+        return await _create_new_debate_node(text, speaker, embedding, timestamp, session_id)
 
 
 async def _find_best_match(
@@ -141,22 +143,25 @@ async def _create_new_debate_node(
     text: str,
     speaker: str,
     embedding: List[float],
-    timestamp: int
+    timestamp: int,
+    session_id: str
 ) -> TranscriptionResponse:
     """
     Create a new debate node.
-    
+
     Args:
         text: Transcription text
         speaker: Speaker identifier
         embedding: Text embedding
         timestamp: Creation timestamp
-        
+        session_id: Debate session ID
+
     Returns:
         TranscriptionResponse with 'created' action
     """
     node = DebateNode(
         id=str(uuid4()),
+        session_id=session_id,
         primary_text=text,
         accumulated_text=text,
         embedding=embedding,
@@ -166,11 +171,11 @@ async def _create_new_debate_node(
         merge_history=[],
         speakers=[speaker],
     )
-    
+
     await insert_debate_node(node)
-    
-    logger.info(f"Created new debate node: {node.id}")
-    
+
+    logger.info(f"Created new debate node: {node.id} in session {session_id}")
+
     return TranscriptionResponse(
         action="created",
         node_id=node.id,
@@ -220,6 +225,7 @@ async def _merge_into_node(
     # Update node fields
     updated_node = DebateNode(
         id=existing_node.id,
+        session_id=existing_node.session_id,
         primary_text=existing_node.primary_text,  # Keep original
         accumulated_text=f"{existing_node.accumulated_text}\n\n[{speaker}]: {new_text}",
         embedding=new_embedding,  # Update to latest embedding
