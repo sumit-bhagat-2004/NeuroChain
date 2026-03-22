@@ -7,6 +7,48 @@ from typing import List, Optional
 from datetime import datetime
 
 
+class DebateSessionParticipant(BaseModel):
+    """Participant in a debate session."""
+    name: Optional[str] = Field(None, description="Participant name (optional)")
+    wallet_address: str = Field(..., description="Participant wallet address")
+
+
+class CreateDebateSessionRequest(BaseModel):
+    """Request to create a new debate session."""
+    topic_name: str = Field(..., description="Topic or debate name", min_length=1)
+    creator_wallet: str = Field(..., description="Creator wallet address")
+    creator_names: List[str] = Field(..., description="Names of creators", min_items=1)
+    participants: List[DebateSessionParticipant] = Field(
+        ...,
+        description="List of participants with names and wallet addresses",
+        min_items=1
+    )
+
+
+class DebateSession(BaseModel):
+    """A debate session with metadata."""
+    session_id: str = Field(..., description="Unique session ID (UUID)")
+    topic_name: str = Field(..., description="Topic or debate name")
+    creator_wallet: str = Field(..., description="Creator wallet address")
+    creator_names: List[str] = Field(..., description="Names of creators")
+    participants: List[DebateSessionParticipant] = Field(..., description="Session participants")
+    created_at: int = Field(..., description="Creation timestamp (milliseconds)")
+    status: str = Field(default="active", description="Session status: active, closed")
+    total_contributions: int = Field(default=0, description="Total contributions in this session")
+
+
+class DebateSessionResponse(BaseModel):
+    """Response after creating a debate session."""
+    session_id: str
+    topic_name: str
+    creator_wallet: str
+    creator_names: List[str]
+    participants: List[DebateSessionParticipant]
+    created_at: int
+    status: str
+    message: str = "Debate session created successfully"
+
+
 class TranscriptionSegment(BaseModel):
     """A single transcription segment (speaker turn)."""
     

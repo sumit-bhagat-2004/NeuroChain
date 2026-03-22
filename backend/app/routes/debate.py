@@ -2,14 +2,17 @@
 Debate routes — API route definitions for debate transcription system.
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Body
 from typing import Optional
-from app.models.debate import TranscriptionRequest
+from app.models.debate import TranscriptionRequest, CreateDebateSessionRequest
 from app.controllers.debate_controller import (
     add_transcription_handler,
     get_debate_node_handler,
     get_all_debate_nodes_handler,
     get_debate_stats_handler,
+    create_debate_session_handler,
+    get_debate_session_handler,
+    get_all_sessions_handler,
 )
 from app.controllers.debate_analytics_controller import (
     get_speaker_stats_handler,
@@ -108,6 +111,103 @@ async def get_debate_stats():
     }
     """
     return await get_debate_stats_handler()
+
+
+# ==================== SESSION MANAGEMENT ENDPOINTS ====================
+
+
+@router.post("/create", status_code=201)
+async def create_debate_session(request: CreateDebateSessionRequest):
+    """
+    Create a new debate session with topic, creators, and participants.
+
+    This initializes a debate session with metadata that can be referenced
+    when adding transcriptions (via debate_id field).
+
+    Request body:
+    {
+        "topic_name": "AI Ethics in Healthcare",
+        "creator_wallet": "0x1234...",
+        "creator_names": ["Alice", "Bob"],
+        "participants": [
+            {
+                "name": "Charlie",
+                "wallet_address": "0x5678..."
+            },
+            {
+                "name": "Diana",
+                "wallet_address": "0x9abc..."
+            }
+        ]
+    }
+
+    Response:
+    {
+        "session_id": "uuid-generated-in-backend",
+        "topic_name": "AI Ethics in Healthcare",
+        "creator_wallet": "0x1234...",
+        "creator_names": ["Alice", "Bob"],
+        "participants": [
+            {
+                "name": "Charlie",
+                "wallet_address": "0x5678..."
+            },
+            {
+                "name": "Diana",
+                "wallet_address": "0x9abc..."
+            }
+        ],
+        "created_at": 1234567890,
+        "status": "active",
+        "message": "Debate session created successfully"
+    }
+    """
+    return await create_debate_session_handler(request)
+
+
+@router.get("/session/{session_id}")
+async def get_debate_session(session_id: str):
+    """
+    Get details of a specific debate session.
+
+    Response:
+    {
+        "session_id": "uuid",
+        "topic_name": "AI Ethics in Healthcare",
+        "creator_wallet": "0x1234...",
+        "creator_names": ["Alice", "Bob"],
+        "participants": [...],
+        "created_at": 1234567890,
+        "status": "active"
+    }
+    """
+    return await get_debate_session_handler(session_id)
+
+
+@router.get("/sessions")
+async def get_all_sessions():
+    """
+    Get all debate sessions.
+
+    Response:
+    {
+        "sessions": [
+            {
+                "session_id": "uuid",
+                "topic_name": "AI Ethics in Healthcare",
+                "creator_wallet": "0x1234...",
+                "creator_names": ["Alice", "Bob"],
+                "participants": [...],
+                "created_at": 1234567890,
+                "status": "active",
+                "total_contributions": 5
+            },
+            ...
+        ],
+        "total": 10
+    }
+    """
+    return await get_all_sessions_handler()
 
 
 # ==================== ANALYTICS ENDPOINTS ====================

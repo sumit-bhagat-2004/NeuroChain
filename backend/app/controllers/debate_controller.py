@@ -10,11 +10,18 @@ from app.models.debate import (
     TranscriptionResponse,
     DebateNode,
     DebateNodeDetails,
+    CreateDebateSessionRequest,
+    DebateSessionResponse,
 )
 from app.services.debate_service import (
     process_transcription,
     get_debate_node_details,
     get_all_debate_nodes_list,
+)
+from app.services.debate_session_service import (
+    create_debate_session,
+    get_session_by_id,
+    get_all_sessions,
 )
 from app.utils.logger import logger
 
@@ -191,9 +198,159 @@ async def get_debate_stats_handler() -> dict:
                 total_merges / len(nodes) if nodes else 0
             ),
         }
-        
+
     except Exception as error:
         logger.error(f"Failed to fetch debate stats: {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+async def create_debate_session_handler(
+    request: CreateDebateSessionRequest
+) -> DebateSessionResponse:
+    """
+    POST /debate/creator
+
+    Create a new debate session with topic, creators, and participants.
+
+    Args:
+        request: CreateDebateSessionRequest with session details
+
+    Returns:
+        DebateSessionResponse with created session
+
+    Raises:
+        HTTPException: 400 if validation fails, 500 otherwise
+    """
+    try:
+        # Validate input
+        if not request.topic_name or not request.topic_name.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Topic name must be non-empty"
+            )
+
+        if not request.creator_wallet or not request.creator_wallet.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Creator wallet must be provided"
+            )
+
+        if not request.creator_names:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one creator name must be provided"
+            )
+
+        if not request.participants:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one participant must be provided"
+            )
+
+        logger.info(
+            f"Creating debate session: '{request.topic_name}' - "
+            f"Creator: {request.creator_wallet} - "
+            f"Participants: {len(request.participants)}"
+        )
+
+        # Create the session
+        response = await create_debate_session(request)
+
+        logger.info(
+            f"Debate session created: {response.session_id} - "
+            f"Topic: '{response.topic_name}'"
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.error(f"Failed to create debate session: {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+async def get_debate_session_handler(session_id: str) -> DebateSessionResponse:
+    """
+    GET /debate/session/{session_id}
+
+    Get details of a debate session.
+
+    Args:
+        session_id: Session ID
+
+    Returns:
+        DebateSessionResponse
+
+    Raises:
+        HTTPException: 404 if not found
+    """
+    try:
+        session = await get_session_by_id(session_id)
+
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Debate session not found: {session_id}"
+            )
+
+        return DebateSessionResponse(
+            session_id=session.session_id,
+            topic_name=session.topic_name,
+            creator_wallet=session.creator_wallet,
+            creator_names=session.creator_names,
+            participants=session.participants,
+            created_at=session.created_at,
+            status=session.status,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.error(f"Failed to fetch debate session {session_id}: {error}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(error)
+        )
+
+
+async def get_all_sessions_handler() -> dict:
+    """
+    GET /debate/sessions
+
+    Get all debate sessions.
+
+    Returns:
+        Dict with sessions array
+    """
+    try:
+        sessions = await get_all_sessions()
+
+        return {
+            "sessions": [
+                {
+                    "session_id": s.session_id,
+                    "topic_name": s.topic_name,
+                    "creator_wallet": s.creator_wallet,
+                    "creator_names": s.creator_names,
+                    "participants": [p.dict() for p in s.participants],
+                    "created_at": s.created_at,
+                    "status": s.status,
+                    "total_contributions": s.total_contributions,
+                }
+                for s in sessions
+            ],
+            "total": len(sessions),
+        }
+
+    except Exception as error:
+        logger.error(f"Failed to fetch debate sessions: {error}")
         raise HTTPException(
             status_code=500,
             detail=str(error)
