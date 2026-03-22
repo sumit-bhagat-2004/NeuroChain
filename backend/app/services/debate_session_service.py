@@ -34,13 +34,18 @@ def _create_session_table_if_not_exists() -> None:
             participants VARIANT NOT NULL,
             created_at BIGINT NOT NULL,
             status VARCHAR(20) DEFAULT 'active',
-            total_contributions INT DEFAULT 0,
-            COMMENT 'Debate session metadata. Participants array contains objects with optional name and required wallet_address'
+            total_contributions INT DEFAULT 0
         )
     """
 
     try:
         cursor.execute(sql)
+        # Add table comment after creation
+        comment_sql = """
+            COMMENT ON TABLE debate_sessions IS
+            'Debate session metadata. Participants array contains objects with optional name and required wallet_address'
+        """
+        cursor.execute(comment_sql)
         logger.info("Debate sessions table ready")
     except Exception as error:
         logger.error(f"Failed to create debate_sessions table: {error}")

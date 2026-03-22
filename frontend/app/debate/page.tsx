@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useWallet } from '@/lib/WalletContext';
 import DebateTranscriptionInput from '@/components/DebateTranscriptionInput';
 import DebateNodesList from '@/components/DebateNodesList';
 import DebateStats from '@/components/DebateStats';
 import SpeakerLeaderboard from '@/components/SpeakerLeaderboard';
 import TopicsAnalysis from '@/components/TopicsAnalysis';
 import DebateConclusion from '@/components/DebateConclusion';
+import DebateSessionCreator from '@/components/DebateSessionCreator';
 import {
   addDebateTranscription,
   getAllDebateNodes,
@@ -15,22 +17,29 @@ import {
   getTopicsAnalysis,
   getDebateConclusion,
   getAIAnalysis,
+  getDebateSession,
   DebateNode,
   DebateStats as DebateStatsType,
   LeaderboardResponse,
   TopicAnalysis,
   DebateConclusion as DebateConclusionType,
   AIAnalysis,
+  DebateSessionResponse,
 } from '@/lib/api';
 import Link from 'next/link';
 
 export default function DebatePage() {
+  const [sessionMode, setSessionMode] = useState<'create' | 'join'>('create');
+  const [activeSession, setActiveSession] = useState<DebateSessionResponse | null>(null);
+  const [currentWalletAddress, setCurrentWalletAddress] = useState('');
+  const [isValidParticipant, setIsValidParticipant] = useState(false);
+
   const [activeTab, setActiveTab] = useState<
     'contribute' | 'nodes' | 'stats' | 'leaderboard' | 'topics' | 'conclusion'
   >('contribute');
 
   const [walletAddress, setWalletAddress] = useState('');
-  const [debateId, setDebateId] = useState('default-debate');
+  const [debateId, setDebateId] = useState('');
 
   // Data states
   const [nodes, setNodes] = useState<DebateNode[]>([]);
@@ -50,6 +59,52 @@ export default function DebatePage() {
 
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Validate if current wallet is creator or participant
+  const validateWalletAccess = (walletAddress: string) => {
+    if (!activeSession) return false;
+
+    const isCreator = activeSession.creator_wallet.toLowerCase() === walletAddress.toLowerCase();
+    const isParticipant = activeSession.participants.some(
+      (p) => p.wallet_address.toLowerCase() === walletAddress.toLowerCase()
+    );
+
+    return isCreator || isParticipant;
+  };
+
+  // Handle new session creation
+  const handleSessionCreated = (session: DebateSessionResponse) => {
+    setActiveSession(session);
+    setDebateId(session.session_id);
+    setSessionMode('join');
+    setSuccessMessage(`Debate session created: ${session.topic_name}`);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  // Load existing session
+  const loadExistingSession = async (sessionId: string) => {
+    try {
+      const session = await getDebateSession(sessionId);
+      setActiveSession(session);
+      setDebateId(session.session_id);
+      setSessionMode('join');
+      setSuccessMessage(`Joined debate session: ${session.topic_name}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(`Failed to load session: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  // Update contributed wallet validation
+  useEffect(() => {
+    if (currentWalletAddress && activeSession) {
+      const isValid = validateWalletAccess(currentWalletAddress);
+      setIsValidParticipant(isValid);
+      if (!isValid) {
+        setError('Your wallet address is not authorized for this debate session');
+      }
+    }
+  }, [currentWalletAddress, activeSession]);
 
   // Load data based on active tab
   useEffect(() => {
@@ -146,6 +201,12 @@ export default function DebatePage() {
   };
 
   const handleSubmitContribution = async (speaker: string, text: string) => {
+    // Validate wallet access
+    if (!validateWalletAccess(speaker)) {
+      setError('Your wallet address is not registered as creator or participant for this session');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setSuccessMessage(null);
@@ -167,6 +228,7 @@ export default function DebatePage() {
 
       // Update wallet address for next contribution
       setWalletAddress(speaker);
+      setCurrentWalletAddress(speaker);
 
       // Reload nodes
       await loadNodes();
@@ -194,149 +256,270 @@ export default function DebatePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-700 px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      {/* If no session, show session creator */}
+      {!activeSession ? (
+        <>
+          {/* Header */}
+          <header className="bg-gray-900 border-b border-gray-700 px-6 py-4 flex-shrink-0">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center gap-4 mb-4">
                 <Link
                   href="/"
                   className="text-purple-400 hover:text-purple-300 transition-colors"
                 >
-                  ← Back
+                  ← Home
                 </Link>
-                <h1 className="text-2xl font-bold text-purple-400">Debate Mode</h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-purple-400">Debate Mode</h1>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Initialize a debate session or join an existing one
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-gray-400 mt-1">
-                Real-time collaborative debate with AI-powered insights
-              </p>
+
+              {/* Mode selector */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSessionMode('create')}
+                  className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                    sessionMode === 'create'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  Create Session
+                </button>
+                <button
+                  onClick={() => setSessionMode('join')}
+                  className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                    sessionMode === 'join'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  Join Existing
+                </button>
+              </div>
             </div>
+          </header>
 
-            {/* Debate Session ID */}
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-400">Session ID:</label>
-              <input
-                type="text"
-                value={debateId}
-                onChange={(e) => setDebateId(e.target.value)}
-                placeholder="Enter debate session ID"
-                className="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+          {/* Main Content - Session Creation/Join */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="mb-6 bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="mb-6 bg-green-900/50 border border-green-700 text-green-200 px-4 py-3 rounded-lg">
+                {successMessage}
+              </div>
+            )}
+
+            {sessionMode === 'create' ? (
+              <DebateSessionCreator onSessionCreated={handleSessionCreated} />
+            ) : (
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <h2 className="text-2xl font-bold text-purple-400 mb-2">Join Debate Session</h2>
+                  <p className="text-gray-400 text-sm mb-6">
+                    Enter a session ID to join an existing debate.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Session ID <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={debateId}
+                        onChange={(e) => setDebateId(e.target.value)}
+                        placeholder="Enter session ID (UUID)"
+                        className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => loadExistingSession(debateId)}
+                      disabled={!debateId.trim()}
+                      className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                    >
+                      Join Session
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-gray-900 border-t border-gray-700 px-6 py-4 flex-shrink-0">
+            <div className="max-w-7xl mx-auto text-center text-sm text-gray-400">
+              <p>NeuroChain Debate Mode - Powered by AI and Blockchain</p>
             </div>
-          </div>
+          </footer>
+        </>
+      ) : (
+        <>
+          {/* Debate Session Active - Show full debate interface */}
+          {/* Header */}
+          <header className="bg-gray-900 border-b border-gray-700 px-6 py-4 sticky top-0 z-10 flex-shrink-0">
+            <div className="max-w-7xl mx-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => {
+                        setActiveSession(null);
+                        setDebateId('');
+                        setCurrentWalletAddress('');
+                      }}
+                      className="text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      ← Home to Session Menu
+                    </button>
+                  </div>
+                  <h1 className="text-2xl font-bold text-purple-400 mt-2">{activeSession.topic_name}</h1>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Created by: {activeSession.creator_names.join(', ')} • Participants: {activeSession.participants.length}
+                  </p>
+                </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium whitespace-nowrap ${
-                  activeTab === tab.key
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+                {/* Session Info */}
+                <div className="text-right">
+                  <div className="text-sm text-gray-400 mb-2">Session ID:</div>
+                  <div className="font-mono text-xs bg-gray-800 px-3 py-2 rounded border border-gray-700 text-gray-200 break-all">
+                    {activeSession.session_id}
+                  </div>
+                  {!isValidParticipant && currentWalletAddress && (
+                    <p className="text-xs text-red-400 mt-2">⚠️ Wallet not authorized</p>
+                  )}
+                </div>
+              </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Error/Success Messages */}
-        {error && (
-          <div className="mb-6 bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-        {successMessage && (
-          <div className="mb-6 bg-green-900/50 border border-green-700 text-green-200 px-4 py-3 rounded-lg">
-            {successMessage}
-          </div>
-        )}
-
-        {/* Content based on active tab */}
-        {activeTab === 'contribute' && (
-          <div className="space-y-6">
-            {/* Input Section */}
-            <DebateTranscriptionInput
-              onSubmit={handleSubmitContribution}
-              isLoading={isSubmitting}
-              currentSpeaker={walletAddress}
-            />
-
-            {/* Recent Contributions */}
-            <div>
-              <h2 className="text-xl font-bold text-white mb-4">Recent Contributions</h2>
-              <DebateNodesList
-                nodes={nodes.slice(0, 10)}
-                isLoading={isLoadingNodes}
-              />
+              {/* Tabs */}
+              <div className="flex gap-2 overflow-x-auto">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-4 py-2 rounded-lg transition-all text-sm font-medium whitespace-nowrap ${
+                      activeTab === tab.key
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          </header>
 
-        {activeTab === 'nodes' && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">All Discussion Nodes</h2>
-              <button
-                onClick={loadNodes}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
-              >
-                Refresh
-              </button>
+          {/* Main Content */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="mb-6 bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="mb-6 bg-green-900/50 border border-green-700 text-green-200 px-4 py-3 rounded-lg">
+                {successMessage}
+              </div>
+            )}
+
+            {/* Content based on active tab */}
+            {activeTab === 'contribute' && (
+              <div className="space-y-6">
+                {/* Authorization Check */}
+                {currentWalletAddress && !isValidParticipant && (
+                  <div className="bg-amber-900/50 border border-amber-700 text-amber-200 px-4 py-3 rounded-lg">
+                    ⚠️ Your wallet address ({currentWalletAddress}) is not registered for this debate session.
+                    Only the creator and participants can contribute.
+                  </div>
+                )}
+
+                {/* Input Section */}
+                <DebateTranscriptionInput
+                  onSubmit={handleSubmitContribution}
+                  isLoading={isSubmitting}
+                  currentSpeaker={walletAddress}
+                />
+
+                {/* Recent Contributions */}
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-4">Recent Contributions</h2>
+                  <DebateNodesList
+                    nodes={nodes.slice(0, 10)}
+                    isLoading={isLoadingNodes}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'nodes' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">All Discussion Nodes</h2>
+                  <button
+                    onClick={loadNodes}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <DebateNodesList nodes={nodes} isLoading={isLoadingNodes} />
+              </div>
+            )}
+
+            {activeTab === 'stats' && (
+              <div>
+                <h2 className="text-xl font-bold text-white mb-6">Debate Statistics</h2>
+                <DebateStats stats={stats} isLoading={isLoadingStats} />
+              </div>
+            )}
+
+            {activeTab === 'leaderboard' && (
+              <div>
+                <h2 className="text-xl font-bold text-white mb-6">Speaker Leaderboard</h2>
+                <SpeakerLeaderboard
+                  speakers={leaderboard?.speakers || []}
+                  isLoading={isLoadingLeaderboard}
+                />
+              </div>
+            )}
+
+            {activeTab === 'topics' && (
+              <div>
+                <TopicsAnalysis analysis={topicsAnalysis} isLoading={isLoadingTopics} />
+              </div>
+            )}
+
+            {activeTab === 'conclusion' && (
+              <div>
+                <DebateConclusion
+                  conclusion={conclusion}
+                  aiAnalysis={aiAnalysis}
+                  isLoading={isLoadingConclusion}
+                  onRefresh={handleRefreshConclusion}
+                />
+              </div>
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="bg-gray-900 border-t border-gray-700 px-6 py-4 flex-shrink-0">
+            <div className="max-w-7xl mx-auto text-center text-sm text-gray-400">
+              <p>NeuroChain Debate Mode - Powered by AI and Blockchain</p>
             </div>
-            <DebateNodesList nodes={nodes} isLoading={isLoadingNodes} />
-          </div>
-        )}
-
-        {activeTab === 'stats' && (
-          <div>
-            <h2 className="text-xl font-bold text-white mb-6">Debate Statistics</h2>
-            <DebateStats stats={stats} isLoading={isLoadingStats} />
-          </div>
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <div>
-            <h2 className="text-xl font-bold text-white mb-6">Speaker Leaderboard</h2>
-            <SpeakerLeaderboard
-              speakers={leaderboard?.speakers || []}
-              isLoading={isLoadingLeaderboard}
-            />
-          </div>
-        )}
-
-        {activeTab === 'topics' && (
-          <div>
-            <TopicsAnalysis analysis={topicsAnalysis} isLoading={isLoadingTopics} />
-          </div>
-        )}
-
-        {activeTab === 'conclusion' && (
-          <div>
-            <DebateConclusion
-              conclusion={conclusion}
-              aiAnalysis={aiAnalysis}
-              isLoading={isLoadingConclusion}
-              onRefresh={handleRefreshConclusion}
-            />
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 border-t border-gray-700 px-6 py-4 mt-12">
-        <div className="max-w-7xl mx-auto text-center text-sm text-gray-400">
-          <p>NeuroChain Debate Mode - Powered by AI and Blockchain</p>
-        </div>
-      </footer>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

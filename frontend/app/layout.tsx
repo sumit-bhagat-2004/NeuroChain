@@ -1,10 +1,10 @@
+'use client';
+
 import type { Metadata } from "next";
+import { WalletProvider } from "@/lib/WalletContext";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "NeuroChain - Knowledge Graph Visualizer",
-  description: "Real-time knowledge graph visualization with AI-powered connections on Algorand",
-};
+// Note: Metadata can't be used in client components, but this layout is already client due to WalletProvider
 
 export default function RootLayout({
   children,
@@ -14,7 +14,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <WalletProvider>
+          {children}
+        </WalletProvider>
       </body>
     </html>
   );

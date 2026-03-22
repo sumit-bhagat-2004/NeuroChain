@@ -51,6 +51,53 @@ export async function getProof(nodeId: string) {
 
 // ==================== DEBATE MODE APIs ====================
 
+export interface DebateSessionParticipant {
+  name?: string;
+  wallet_address: string;
+}
+
+export interface CreateDebateSessionRequest {
+  topic_name: string;
+  creator_wallet: string;
+  creator_names: string[];
+  participants: DebateSessionParticipant[];
+}
+
+export interface DebateSessionResponse {
+  session_id: string;
+  topic_name: string;
+  creator_wallet: string;
+  creator_names: string[];
+  participants: DebateSessionParticipant[];
+  created_at: number;
+  status: string;
+  message?: string;
+}
+
+export async function createDebateSession(
+  request: CreateDebateSessionRequest
+): Promise<DebateSessionResponse> {
+  const response = await fetch(`${API_BASE_URL}/debate/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail || response.statusText);
+  }
+  return response.json();
+}
+
+export async function getDebateSession(sessionId: string): Promise<DebateSessionResponse> {
+  const response = await fetch(`${API_BASE_URL}/debate/session/${sessionId}`);
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.detail || response.statusText);
+  }
+  return response.json();
+}
+
 export interface DebateTranscriptionRequest {
   speaker: string; // wallet address
   text: string;

@@ -1,297 +1,244 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import GraphCanvas from "@/components/GraphCanvas";
-import NodePanel from "@/components/NodePanel";
-import EdgePanel from "@/components/EdgePanel";
-import InputBar from "@/components/InputBar";
-import { GraphData, Node, Link as GraphLink } from "@/lib/types";
-import { createNode, getGraph } from "@/lib/api";
-import ConnectButton from "@/components/ConnectButton";
-import Link from "next/link";
+import Link from 'next/link';
+import { useWallet } from '@/lib/WalletContext';
 
 export default function Home() {
-  const [graphData, setGraphData] = useState<GraphData>({
-    nodes: [],
-    links: [],
-  });
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<
-    (GraphLink & { source: Node; target: Node }) | null
-  >(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isReplayMode, setIsReplayMode] = useState(false);
-  const [newNodeId, setNewNodeId] = useState<string | null>(null);
-
-  // Load initial graph data
-  useEffect(() => {
-    loadGraph();
-  }, []);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    const wsUrl =
-      process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ||
-      "ws://localhost:8000";
-    const ws = new WebSocket(`${wsUrl}/ws`);
-
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "node_created") {
-          // Add new node and edges to graph
-          setGraphData((prev) => ({
-            nodes: [...prev.nodes, data.node],
-            links: [...prev.links, ...data.edges],
-          }));
-
-          // Highlight new node
-          setNewNodeId(data.node.id);
-          setTimeout(() => setNewNodeId(null), 3000);
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket disconnected");
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  const loadGraph = async () => {
-    try {
-      const data = await getGraph();
-      setGraphData(data);
-    } catch (err) {
-      console.error("Failed to load graph:", err);
-      // Initialize with empty graph if backend is not available
-      setGraphData({ nodes: [], links: [] });
-    }
-  };
-
-  const handleAddNode = async (text: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await createNode(text);
-
-      // Update graph data with new node and connections
-      setGraphData((prev) => ({
-        nodes: [...prev.nodes, response.node],
-        links: [...prev.links, ...response.connections],
-      }));
-
-      // Highlight new node
-      setNewNodeId(response.node.id);
-      setTimeout(() => setNewNodeId(null), 3000);
-
-      // Log evolution info
-      console.log("Node added successfully:", {
-        id: response.node.id,
-        action: response.action,
-        creativity_score: response.creativity_score,
-        merge_count: response.merge_count,
-        similarity_breakdown: response.similarity_breakdown,
-      });
-
-      // Show success message with evolution info
-      if (response.action === "merged" && response.merge_count > 0) {
-        console.log(
-          `💡 Thought evolved! (${response.merge_count} evolution${response.merge_count > 1 ? "s" : ""}, creativity: ${(response.creativity_score * 100).toFixed(0)}%)`,
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create node");
-      console.error("Error creating node:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNodeClick = (node: Node) => {
-    setSelectedNode(node);
-    setSelectedEdge(null);
-  };
-
-  const handleClosePanel = () => {
-    setSelectedNode(null);
-  };
-
-  const handleEdgeClick = (link: any) => {
-    // Extract full node objects for source and target
-    const sourceNode =
-      typeof link.source === "object"
-        ? link.source
-        : graphData.nodes.find((n) => n.id === link.source);
-    const targetNode =
-      typeof link.target === "object"
-        ? link.target
-        : graphData.nodes.find((n) => n.id === link.target);
-
-    if (sourceNode && targetNode) {
-      setSelectedNode(null);
-      setSelectedEdge({
-        ...link,
-        source: sourceNode,
-        target: targetNode,
-      });
-    }
-  };
-
-  const handleCloseEdgePanel = () => {
-    setSelectedEdge(null);
-  };
-
-  const handleReplay = async () => {
-    if (graphData.nodes.length === 0) return;
-
-    setIsReplayMode(true);
-
-    // Store the original data before clearing
-    const originalNodes = [...graphData.nodes];
-    const originalLinks = [...graphData.links];
-
-    setGraphData({ nodes: [], links: [] });
-
-    // Sort nodes by timestamp
-    const sortedNodes = originalNodes.sort((a, b) => a.timestamp - b.timestamp);
-
-    // Keep track of added node IDs
-    const addedNodeIds = new Set<string>();
-
-    // Replay nodes one by one
-    for (let i = 0; i < sortedNodes.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      const currentNode = sortedNodes[i];
-      addedNodeIds.add(currentNode.id);
-
-      // Only add links where BOTH source and target are now in the graph
-      const relevantLinks = originalLinks.filter((link) => {
-        const sourceId =
-          typeof link.source === "string" ? link.source : link.source.id;
-        const targetId =
-          typeof link.target === "string" ? link.target : link.target.id;
-
-        // Link should be added if both nodes are now in the graph
-        return addedNodeIds.has(sourceId) && addedNodeIds.has(targetId);
-      });
-
-      setGraphData({
-        nodes: sortedNodes.slice(0, i + 1),
-        links: relevantLinks,
-      });
-    }
-
-    setIsReplayMode(false);
-  };
-
-  const handleReset = () => {
-    setGraphData({ nodes: [], links: [] });
-    setSelectedNode(null);
-    setError(null);
-  };
+  const { accountAddress, connectWallet } = useWallet();
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-950">
-      {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-10 bg-gray-900 border-b border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-purple-400">NeuroChain</h1>
-            <p className="text-sm text-gray-400">Knowledge Graph Visualizer</p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
+      {/* Navigation */}
+      <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="text-2xl font-bold text-purple-400">NeuroChain</div>
+          <div className="flex items-center gap-4">
+            {accountAddress ? (
+              <>
+                <div className="px-3 py-2 bg-purple-900/50 border border-purple-700 rounded-lg text-xs text-purple-200 font-mono">
+                  {accountAddress.slice(0, 6)}...{accountAddress.slice(-4)}
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={connectWallet}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                Connect Wallet
+              </button>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-6 py-24">
+        <div className="text-center mb-20">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-purple-500 to-blue-400 bg-clip-text text-transparent">
+            NeuroChain
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-300 mb-4">
+            Knowledge Graph Visualization & Collaborative Debate Platform
+          </p>
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+            Build interconnected knowledge networks in real-time while engaging in structured debates powered by AI and blockchain technology on Algorand.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link
+              href="/dashboard"
+              className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium text-lg flex items-center gap-2"
+            >
+              🧠 Launch Dashboard
+            </Link>
+            <Link
+              href="/debate"
+              className="px-8 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors font-medium text-lg flex items-center gap-2"
+            >
+              🎤 Start Debate
+            </Link>
+          </div>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 gap-8 mt-24">
+          {/* Feature 1: Knowledge Graph */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 hover:border-purple-600 transition-colors">
+            <div className="text-4xl mb-4">🧠</div>
+            <h3 className="text-2xl font-bold text-purple-400 mb-3">Knowledge Graph</h3>
+            <p className="text-gray-300 mb-4">
+              Visualize and build interconnected knowledge networks in real-time. Watch as AI-powered connections emerge and thoughts evolve through intelligent merging.
+            </p>
+            <ul className="text-gray-400 space-y-2 text-sm">
+              <li>✓ Real-time visualization</li>
+              <li>✓ AI-powered connections</li>
+              <li>✓ Thought evolution tracking</li>
+              <li>✓ Interactive graph exploration</li>
+            </ul>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Stats */}
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                <span className="text-gray-300">
-                  {graphData.nodes.length} Nodes
-                </span>
+          {/* Feature 2: Debate Mode */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 hover:border-orange-600 transition-colors">
+            <div className="text-4xl mb-4">🎤</div>
+            <h3 className="text-2xl font-bold text-orange-400 mb-3">Debate Sessions</h3>
+            <p className="text-gray-300 mb-4">
+              Conduct structured debates on any topic with controlled access. Create sessions with specific creators and participants for focused discussions.
+            </p>
+            <ul className="text-gray-400 space-y-2 text-sm">
+              <li>✓ Session-based debates</li>
+              <li>✓ Access control via wallet</li>
+              <li>✓ AI-powered analysis</li>
+              <li>✓ Real-time statistics</li>
+            </ul>
+          </div>
+
+          {/* Feature 3: AI Analytics */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 hover:border-blue-600 transition-colors">
+            <div className="text-4xl mb-4">📊</div>
+            <h3 className="text-2xl font-bold text-blue-400 mb-3">AI Analytics</h3>
+            <p className="text-gray-300 mb-4">
+              Get comprehensive insights into discussions and debates. AI-powered analysis reveals patterns, key arguments, and actionable recommendations.
+            </p>
+            <ul className="text-gray-400 space-y-2 text-sm">
+              <li>✓ Speaker analytics</li>
+              <li>✓ Topic analysis</li>
+              <li>✓ Leaderboards</li>
+              <li>✓ AI-generated conclusions</li>
+            </ul>
+          </div>
+
+          {/* Feature 4: Blockchain Integration */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 hover:border-green-600 transition-colors">
+            <div className="text-4xl mb-4">⛓️</div>
+            <h3 className="text-2xl font-bold text-green-400 mb-3">Blockchain Security</h3>
+            <p className="text-gray-300 mb-4">
+              Built on Algorand blockchain for secure, transparent, and verifiable debate sessions. Wallet-based authentication ensures authenticity.
+            </p>
+            <ul className="text-gray-400 space-y-2 text-sm">
+              <li>✓ Algorand integration</li>
+              <li>✓ Pera wallet support</li>
+              <li>✓ Immutable records</li>
+              <li>✓ Secure transactions</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* How It Works */}
+        <div className="mt-24">
+          <h2 className="text-4xl font-bold text-center text-purple-400 mb-12">How It Works</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Step 1 */}
+            <div className="relative">
+              <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-purple-600 rounded-full text-white font-bold flex items-center justify-center">
+                1
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <span className="text-gray-300">
-                  {graphData.links.length} Connections
-                </span>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 pt-12">
+                <h4 className="text-xl font-bold text-purple-400 mb-3">Connect Wallet</h4>
+                <p className="text-gray-400">
+                  Connect your Pera wallet to authenticate your identity and participate in debates and knowledge graphs.
+                </p>
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex gap-2">
-              <ConnectButton />
-              <Link
-                href="/debate"
-                className="px-4 py-2 bg-orange-700 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
-              >
-                🎤 Debate Mode
-              </Link>
-              <button
-                onClick={handleReplay}
-                disabled={isReplayMode || graphData.nodes.length === 0}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
-              >
-                {isReplayMode ? "Replaying..." : "Replay"}
-              </button>
-              <button
-                onClick={handleReset}
-                disabled={graphData.nodes.length === 0}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
-              >
-                Reset
-              </button>
+            {/* Step 2 */}
+            <div className="relative">
+              <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-purple-600 rounded-full text-white font-bold flex items-center justify-center">
+                2
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 pt-12">
+                <h4 className="text-xl font-bold text-purple-400 mb-3">Create or Join</h4>
+                <p className="text-gray-400">
+                  Create a new debate session with specific participants, or join an existing session to contribute your insights.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative">
+              <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-purple-600 rounded-full text-white font-bold flex items-center justify-center">
+                3
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-8 pt-12">
+                <h4 className="text-xl font-bold text-purple-400 mb-3">Debate & Analyze</h4>
+                <p className="text-gray-400">
+                  Contribute ideas, watch them merge and evolve, and gain AI-powered insights into the discussion.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mt-3 bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded-lg text-sm">
-            {error}
+        {/* CTA Section */}
+        <div className="mt-24 bg-gradient-to-r from-purple-900/50 to-blue-900/50 border border-purple-700/50 rounded-lg p-12 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">Ready to Start?</h2>
+          <p className="text-gray-300 mb-6 text-lg">
+            Explore the knowledge graph or create your first debate session today.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/dashboard"
+              className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium"
+            >
+              Go to Dashboard
+            </Link>
+            <Link
+              href="/debate"
+              className="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors font-medium"
+            >
+              Start Debating
+            </Link>
           </div>
-        )}
-      </header>
+        </div>
+      </section>
 
-      {/* Main Content */}
-      <div className="absolute top-[73px] bottom-0 left-0 right-0">
-        <GraphCanvas
-          data={graphData}
-          onNodeClick={handleNodeClick}
-          onEdgeClick={handleEdgeClick}
-          selectedNodeId={selectedNode?.id}
-          newNodeId={newNodeId}
-        />
-      </div>
-
-      {/* Node Details Panel */}
-      {selectedNode && (
-        <NodePanel node={selectedNode} onClose={handleClosePanel} />
-      )}
-
-      {/* Edge Details Panel */}
-      {selectedEdge && (
-        <EdgePanel edge={selectedEdge} onClose={handleCloseEdgePanel} />
-      )}
-
-      {/* Input Bar */}
-      <InputBar onSubmit={handleAddNode} isLoading={isLoading} />
+      {/* Footer */}
+      <footer className="border-t border-gray-800 bg-gray-900/50 mt-24">
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h4 className="text-lg font-bold text-purple-400 mb-4">NeuroChain</h4>
+              <p className="text-gray-400 text-sm">
+                Building the future of collaborative intelligence on blockchain.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-gray-300 mb-4">Features</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <Link href="/dashboard" className="hover:text-purple-400 transition-colors">
+                    Knowledge Graph
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/debate" className="hover:text-purple-400 transition-colors">
+                    Debate Sessions
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-gray-300 mb-4">Technology</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Algorand</li>
+                <li>Pera Wallet</li>
+                <li>AI Analytics</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-gray-300 mb-4">Connect</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>GitHub</li>
+                <li>Twitter</li>
+                <li>Docs</li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-700 pt-8 text-center text-sm text-gray-400">
+            <p>© 2026 NeuroChain. Powered by AI and Blockchain.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
