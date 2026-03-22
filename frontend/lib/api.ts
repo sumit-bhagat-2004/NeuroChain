@@ -4,7 +4,21 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const BLOCKCHAIN_URL =
   process.env.NEXT_PUBLIC_BLOCKCHAIN_URL || "http://localhost:8001";
 
-export async function createNode(text: string, source?: string, author_wallet?: string): Promise<CreateNodeResponse> {
+// Algorand App IDs (LocalNet Deployment)
+export const APP_IDS = {
+  liveProof: 1002,
+  debateStake: 1034,
+};
+
+// Deployer Account
+export const DEPLOYER_ADDRESS =
+  "NMNRVAW7ZYZAKXFFSTTLHHNDXLG742E36OSJMEW524XXXQTZO3R6HGOQT4";
+
+export async function createNode(
+  text: string,
+  source?: string,
+  author_wallet?: string,
+): Promise<CreateNodeResponse> {
   const response = await fetch(`${API_BASE_URL}/node`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -114,7 +128,7 @@ export interface DebateTranscriptionResponse {
 }
 
 export async function addDebateTranscription(
-  request: DebateTranscriptionRequest
+  request: DebateTranscriptionRequest,
 ): Promise<DebateTranscriptionResponse> {
   const response = await fetch(`${API_BASE_URL}/debate/transcription`, {
     method: "POST",
@@ -198,8 +212,12 @@ export interface SpeakerStats {
   rank: number;
 }
 
-export async function getSpeakerStats(speakerName: string): Promise<SpeakerStats> {
-  const response = await fetch(`${API_BASE_URL}/debate/speaker/${encodeURIComponent(speakerName)}/stats`);
+export async function getSpeakerStats(
+  speakerName: string,
+): Promise<SpeakerStats> {
+  const response = await fetch(
+    `${API_BASE_URL}/debate/speaker/${encodeURIComponent(speakerName)}/stats`,
+  );
   if (!response.ok) throw new Error(response.statusText);
   return response.json();
 }
@@ -219,8 +237,12 @@ export interface LeaderboardResponse {
   total: number;
 }
 
-export async function getDebateLeaderboard(limit: number = 10): Promise<LeaderboardResponse> {
-  const response = await fetch(`${API_BASE_URL}/debate/leaderboard?limit=${Math.min(limit, 100)}`);
+export async function getDebateLeaderboard(
+  limit: number = 10,
+): Promise<LeaderboardResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/debate/leaderboard?limit=${Math.min(limit, 100)}`,
+  );
   if (!response.ok) throw new Error(response.statusText);
   return response.json();
 }
@@ -253,7 +275,9 @@ export interface DebateConclusion {
   overall_quality_score: number;
 }
 
-export async function getDebateConclusion(sessionId?: string): Promise<DebateConclusion> {
+export async function getDebateConclusion(
+  sessionId?: string,
+): Promise<DebateConclusion> {
   let url = `${API_BASE_URL}/debate/conclusion`;
   if (sessionId) {
     url += `?session_id=${encodeURIComponent(sessionId)}`;

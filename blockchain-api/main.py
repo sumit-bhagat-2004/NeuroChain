@@ -3,7 +3,6 @@ import sys
 import hashlib
 import json
 import time
-import base64
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -36,13 +35,14 @@ app.add_middleware(
 def get_client() -> LiveProofClient:
     algorand = algokit_utils.AlgorandClient.from_environment()
 
-    # Get the base64-encoded private key (SigningAccount expects base64 string, not bytes)
-    private_key = os.getenv("DEPLOYER_MNEMONIC", "")
+    # Get the base64-encoded private key directly
+    private_key_b64 = os.getenv("DEPLOYER_PRIVATE_KEY", "")
 
-    if not private_key:
-        raise ValueError("DEPLOYER_MNEMONIC environment variable is not set")
+    if not private_key_b64:
+        raise ValueError("DEPLOYER_PRIVATE_KEY environment variable is not set")
 
-    account = algokit_utils.SigningAccount(private_key=private_key)
+    # Pass to SigningAccount
+    account = algokit_utils.SigningAccount(private_key=private_key_b64)
 
     return algorand.client.get_typed_app_client_by_id(
         LiveProofClient,
