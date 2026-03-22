@@ -29,7 +29,7 @@ export default function NodePanel({ node, onClose }: NodePanelProps) {
     getProof(node.id)
       .then(setProof)
       .finally(() => setLoadingProof(false));
-  }, [node?.id]);
+  }, [node]);
 
   if (!node) return null;
 
@@ -172,8 +172,8 @@ export default function NodePanel({ node, onClose }: NodePanelProps) {
 
               <div className="pt-1 border-t border-gray-700">
                 <p className="text-xs text-gray-500 italic">
-                  "We store not just what was said, but how the AI understood
-                  it."
+                  &ldquo;We store not just what was said, but how the AI
+                  understood it.&rdquo;
                 </p>
               </div>
             </div>
