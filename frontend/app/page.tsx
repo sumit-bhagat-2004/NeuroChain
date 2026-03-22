@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import GraphCanvas from "@/components/GraphCanvas";
 import NodePanel from "@/components/NodePanel";
+import EdgePanel from "@/components/EdgePanel";
 import InputBar from "@/components/InputBar";
-import { GraphData, Node } from "@/lib/types";
+import { GraphData, Node, Link } from "@/lib/types";
 import { createNode, getGraph } from "@/lib/api";
 import ConnectButton from "@/components/ConnectButton";
 
@@ -14,6 +15,9 @@ export default function Home() {
     links: [],
   });
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<
+    (Link & { source: Node; target: Node }) | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isReplayMode, setIsReplayMode] = useState(false);
@@ -26,7 +30,9 @@ export default function Home() {
 
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") || "ws://localhost:8000";
+    const wsUrl =
+      process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ||
+      "ws://localhost:8000";
     const ws = new WebSocket(`${wsUrl}/ws`);
 
     ws.onopen = () => {
@@ -105,7 +111,7 @@ export default function Home() {
       // Show success message with evolution info
       if (response.action === "merged" && response.merge_count > 0) {
         console.log(
-          `💡 Thought evolved! (${response.merge_count} evolution${response.merge_count > 1 ? "s" : ""}, creativity: ${(response.creativity_score * 100).toFixed(0)}%)`
+          `💡 Thought evolved! (${response.merge_count} evolution${response.merge_count > 1 ? "s" : ""}, creativity: ${(response.creativity_score * 100).toFixed(0)}%)`,
         );
       }
     } catch (err) {
@@ -118,10 +124,36 @@ export default function Home() {
 
   const handleNodeClick = (node: Node) => {
     setSelectedNode(node);
+    setSelectedEdge(null);
   };
 
   const handleClosePanel = () => {
     setSelectedNode(null);
+  };
+
+  const handleEdgeClick = (link: any) => {
+    // Extract full node objects for source and target
+    const sourceNode =
+      typeof link.source === "object"
+        ? link.source
+        : graphData.nodes.find((n) => n.id === link.source);
+    const targetNode =
+      typeof link.target === "object"
+        ? link.target
+        : graphData.nodes.find((n) => n.id === link.target);
+
+    if (sourceNode && targetNode) {
+      setSelectedNode(null);
+      setSelectedEdge({
+        ...link,
+        source: sourceNode,
+        target: targetNode,
+      });
+    }
+  };
+
+  const handleCloseEdgePanel = () => {
+    setSelectedEdge(null);
   };
 
   const handleReplay = async () => {
@@ -136,9 +168,7 @@ export default function Home() {
     setGraphData({ nodes: [], links: [] });
 
     // Sort nodes by timestamp
-    const sortedNodes = originalNodes.sort(
-      (a, b) => a.timestamp - b.timestamp,
-    );
+    const sortedNodes = originalNodes.sort((a, b) => a.timestamp - b.timestamp);
 
     // Keep track of added node IDs
     const addedNodeIds = new Set<string>();
@@ -152,8 +182,10 @@ export default function Home() {
 
       // Only add links where BOTH source and target are now in the graph
       const relevantLinks = originalLinks.filter((link) => {
-        const sourceId = typeof link.source === "string" ? link.source : link.source.id;
-        const targetId = typeof link.target === "string" ? link.target : link.target.id;
+        const sourceId =
+          typeof link.source === "string" ? link.source : link.source.id;
+        const targetId =
+          typeof link.target === "string" ? link.target : link.target.id;
 
         // Link should be added if both nodes are now in the graph
         return addedNodeIds.has(sourceId) && addedNodeIds.has(targetId);
@@ -235,6 +267,7 @@ export default function Home() {
         <GraphCanvas
           data={graphData}
           onNodeClick={handleNodeClick}
+          onEdgeClick={handleEdgeClick}
           selectedNodeId={selectedNode?.id}
           newNodeId={newNodeId}
         />
@@ -243,6 +276,11 @@ export default function Home() {
       {/* Node Details Panel */}
       {selectedNode && (
         <NodePanel node={selectedNode} onClose={handleClosePanel} />
+      )}
+
+      {/* Edge Details Panel */}
+      {selectedEdge && (
+        <EdgePanel edge={selectedEdge} onClose={handleCloseEdgePanel} />
       )}
 
       {/* Input Bar */}
