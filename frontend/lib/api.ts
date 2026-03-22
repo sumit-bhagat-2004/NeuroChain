@@ -1,8 +1,7 @@
 import { CreateNodeResponse, GraphData, Node } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const BLOCKCHAIN_URL =
-  process.env.NEXT_PUBLIC_BLOCKCHAIN_URL || "http://localhost:8001";
+const BLOCKCHAIN_URL = "https://special-oriole-remotely.ngrok-free.app/";
 
 // Algorand App IDs (LocalNet Deployment)
 export const APP_IDS = {
