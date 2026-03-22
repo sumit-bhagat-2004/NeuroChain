@@ -89,8 +89,8 @@ export default function GraphCanvas({ data, onNodeClick, onLinkClick, selectedNo
     const start = link.source;
     const end = link.target;
 
-    // Safety check: ensure start and end have valid coordinates
-    if (!start || !end || !isFinite(start.x) || !isFinite(start.y) || !isFinite(end.x) || !isFinite(end.y)) {
+    // Safety check: ensure start and end are objects (not strings or numbers) and have valid coordinates
+    if (typeof start !== 'object' || typeof end !== 'object' || !start || !end || !isFinite(start.x) || !isFinite(start.y) || !isFinite(end.x) || !isFinite(end.y)) {
       return; // Skip rendering if coordinates are invalid
     }
 
@@ -143,8 +143,8 @@ export default function GraphCanvas({ data, onNodeClick, onLinkClick, selectedNo
           const start = link.source;
           const end = link.target;
 
-          // Type guard: ensure start and end are objects, not strings
-          if (typeof start === 'string' || typeof end === 'string') return;
+          // Type guard: ensure start and end are objects (not strings or numbers)
+          if (typeof start !== 'object' || typeof end !== 'object') return;
           if (!start || !end || !isFinite(start.x!) || !isFinite(start.y!) || !isFinite(end.x!) || !isFinite(end.y!)) return;
 
           ctx.strokeStyle = color;
