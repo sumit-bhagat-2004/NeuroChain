@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     algod_token: str = "a" * 64
 
     # Engine parameters
-    score_threshold: float = 0.7
+    score_threshold: float = 0.6
     max_edges_per_node: int = 3
     time_decay_halflife: int = 86400000  # 24 hours in milliseconds
     candidate_limit: int = 20

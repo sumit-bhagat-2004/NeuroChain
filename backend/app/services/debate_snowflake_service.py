@@ -33,6 +33,7 @@ def _initialize_debate_tables_sync() -> None:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS debate_nodes (
                 id STRING PRIMARY KEY,
+                session_id STRING NOT NULL,
                 primary_text STRING,
                 accumulated_text STRING,
                 embedding VECTOR(FLOAT, 768),
@@ -68,12 +69,13 @@ def _insert_debate_node_sync(node: DebateNode) -> None:
     # Use SELECT with EMBED_TEXT_768 - Snowflake handles VECTOR conversion automatically
     sql = """
         INSERT INTO debate_nodes (
-            id, primary_text, accumulated_text, embedding,
+            id, session_id, primary_text, accumulated_text, embedding,
             created_at, last_updated, merge_count,
             merge_history, speakers
         )
         SELECT
             %(id)s,
+            %(session_id)s,
             %(primary_text)s,
             %(accumulated_text)s,
             SNOWFLAKE.CORTEX.EMBED_TEXT_768('snowflake-arctic-embed-m-v1.5', %(text_for_embedding)s),
@@ -86,6 +88,7 @@ def _insert_debate_node_sync(node: DebateNode) -> None:
 
     params = {
         'id': node.id,
+        'session_id': node.session_id,
         'primary_text': node.primary_text,
         'accumulated_text': node.accumulated_text,
         'text_for_embedding': node.accumulated_text,  # Use accumulated text for embedding
@@ -152,13 +155,13 @@ def _get_all_debate_nodes_sync() -> List[DebateNode]:
     """Fetch all debate nodes."""
     sql = """
         SELECT
-            id, primary_text, accumulated_text, embedding,
+            id, session_id, primary_text, accumulated_text, embedding,
             created_at, last_updated, merge_count,
             merge_history, speakers
         FROM debate_nodes
         ORDER BY created_at ASC
     """
-    
+
     results = _execute_query(sql)
 
     nodes = []
@@ -172,6 +175,7 @@ def _get_all_debate_nodes_sync() -> List[DebateNode]:
 
         nodes.append(DebateNode(
             id=row['ID'],
+            session_id=row['SESSION_ID'],
             primary_text=row['PRIMARY_TEXT'],
             accumulated_text=row['ACCUMULATED_TEXT'],
             embedding=embedding_list,
@@ -191,24 +195,69 @@ async def get_all_debate_nodes() -> List[DebateNode]:
 
 
 @async_snowflake
+def _get_debate_nodes_by_session_sync(session_id: str) -> List[DebateNode]:
+    """Fetch debate nodes for a specific session only."""
+    sql = """
+        SELECT
+            id, session_id, primary_text, accumulated_text, embedding,
+            created_at, last_updated, merge_count,
+            merge_history, speakers
+        FROM debate_nodes
+        WHERE session_id = %(session_id)s
+        ORDER BY created_at ASC
+    """
+
+    results = _execute_query(sql, {'session_id': session_id})
+
+    nodes = []
+    for row in results:
+        # Parse JSON fields
+        merge_history_data = json.loads(row['MERGE_HISTORY']) if row['MERGE_HISTORY'] else []
+        speakers_data = json.loads(row['SPEAKERS']) if row['SPEAKERS'] else []
+        embedding_list = row['EMBEDDING'] if isinstance(row['EMBEDDING'], list) else []
+
+        merge_history = [MergeRecord(**m) for m in merge_history_data]
+
+        nodes.append(DebateNode(
+            id=row['ID'],
+            session_id=row['SESSION_ID'],
+            primary_text=row['PRIMARY_TEXT'],
+            accumulated_text=row['ACCUMULATED_TEXT'],
+            embedding=embedding_list,
+            created_at=row['CREATED_AT'],
+            last_updated=row['LAST_UPDATED'],
+            merge_count=row['MERGE_COUNT'],
+            merge_history=merge_history,
+            speakers=speakers_data,
+        ))
+
+    return nodes
+
+
+async def get_debate_nodes_by_session(session_id: str) -> List[DebateNode]:
+    """Fetch debate nodes by session (async)."""
+    return await _get_debate_nodes_by_session_sync(session_id)
+
+
+@async_snowflake
 def _get_debate_node_by_id_sync(node_id: str) -> Optional[DebateNode]:
     """Fetch specific debate node by ID."""
     sql = """
         SELECT
-            id, primary_text, accumulated_text, embedding,
+            id, session_id, primary_text, accumulated_text, embedding,
             created_at, last_updated, merge_count,
             merge_history, speakers
         FROM debate_nodes
         WHERE id = %(id)s
     """
-    
+
     results = _execute_query(sql, {'id': node_id})
 
     if not results:
         return None
 
     row = results[0]
-    
+
     # Parse JSON fields
     merge_history_data = json.loads(row['MERGE_HISTORY']) if row['MERGE_HISTORY'] else []
     speakers_data = json.loads(row['SPEAKERS']) if row['SPEAKERS'] else []
@@ -218,6 +267,7 @@ def _get_debate_node_by_id_sync(node_id: str) -> Optional[DebateNode]:
 
     return DebateNode(
         id=row['ID'],
+        session_id=row['SESSION_ID'],
         primary_text=row['PRIMARY_TEXT'],
         accumulated_text=row['ACCUMULATED_TEXT'],
         embedding=embedding_list,
