@@ -1,0 +1,352 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 2
+    bytecblock "settled" 0x00 "pool" "winner" "owner" "s_" "t_" 0x151f7c75
+    // smart_contracts/debate_stake/contract.py:15
+    // class DebateStake(ARC4Contract):
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    bz main_create_NoOp@11
+    pushbytess 0xf5c81166 0x60dfea53 0xf1577726 0xc5aa5b9d 0xb2ff8b27 // method "stake(string)void", method "settle(string)void", method "claim()void", method "get_pool_info()uint64", method "get_winner()string"
+    txna ApplicationArgs 0
+    match stake settle claim get_pool_info get_winner
+    err
+
+main_create_NoOp@11:
+    // smart_contracts/debate_stake/contract.py:15
+    // class DebateStake(ARC4Contract):
+    pushbytes 0xecf339e7 // method "initialize(string)void"
+    txna ApplicationArgs 0
+    match initialize
+    err
+
+
+// smart_contracts.debate_stake.contract.DebateStake.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/debate_stake/contract.py:26
+    // @arc4.abimethod(allow_actions=["NoOp"], create="require")
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/debate_stake/contract.py:28
+    // self.debate_id.value = debate_id
+    pushbytes "debate_id"
+    swap
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:29
+    // self.total_pool.value = UInt64(0)
+    bytec_2 // "pool"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:30
+    // self.is_settled.value = arc4.Bool(False)
+    bytec_0 // "settled"
+    bytec_1 // 0x00
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:31
+    // self.winner_node_id.value = arc4.String("")
+    bytec_3 // "winner"
+    pushbytes 0x0000
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:32
+    // self.owner.value = Txn.sender
+    bytec 4 // "owner"
+    txn Sender
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:26
+    // @arc4.abimethod(allow_actions=["NoOp"], create="require")
+    intc_1 // 1
+    return
+
+
+// smart_contracts.debate_stake.contract.DebateStake.stake[routing]() -> void:
+stake:
+    // smart_contracts/debate_stake/contract.py:34
+    // @arc4.abimethod
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/debate_stake/contract.py:36
+    // assert not self.is_settled.value, "Debate already settled"
+    intc_0 // 0
+    bytec_0 // "settled"
+    app_global_get_ex
+    assert // check self.is_settled exists
+    bytec_1 // 0x00
+    ==
+    assert // Debate already settled
+    // smart_contracts/debate_stake/contract.py:37
+    // caller = arc4.Address(Txn.sender)
+    txn Sender
+    // smart_contracts/debate_stake/contract.py:38
+    // assert caller not in self.stakes, "Already staked"
+    bytec 5 // "s_"
+    dig 1
+    concat
+    dup
+    box_len
+    bury 1
+    !
+    assert // Already staked
+    // smart_contracts/debate_stake/contract.py:39
+    // pay = gtxn.PaymentTransaction(0)
+    intc_0 // 0
+    gtxns TypeEnum
+    intc_1 // pay
+    ==
+    assert // transaction type is pay
+    intc_0 // 0
+    // smart_contracts/debate_stake/contract.py:40
+    // assert pay.receiver == Global.current_application_address, "Pay must go to contract"
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert // Pay must go to contract
+    // smart_contracts/debate_stake/contract.py:39
+    // pay = gtxn.PaymentTransaction(0)
+    intc_0 // 0
+    // smart_contracts/debate_stake/contract.py:41
+    // assert pay.amount > UInt64(0), "Must send ALGO to stake"
+    gtxns Amount
+    dup
+    assert // Must send ALGO to stake
+    // smart_contracts/debate_stake/contract.py:42
+    // self.stakes[caller] = pay.amount
+    dup
+    itob
+    uncover 2
+    swap
+    box_put
+    // smart_contracts/debate_stake/contract.py:43
+    // self.stances[caller] = stance_node_id
+    bytec 6 // "t_"
+    uncover 2
+    concat
+    dup
+    box_del
+    pop
+    uncover 2
+    box_put
+    // smart_contracts/debate_stake/contract.py:44
+    // self.total_pool.value = self.total_pool.value + pay.amount
+    intc_0 // 0
+    bytec_2 // "pool"
+    app_global_get_ex
+    assert // check self.total_pool exists
+    +
+    bytec_2 // "pool"
+    swap
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:34
+    // @arc4.abimethod
+    intc_1 // 1
+    return
+
+
+// smart_contracts.debate_stake.contract.DebateStake.settle[routing]() -> void:
+settle:
+    // smart_contracts/debate_stake/contract.py:46
+    // @arc4.abimethod
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    // smart_contracts/debate_stake/contract.py:48
+    // assert Txn.sender == self.owner.value, "Only owner can settle"
+    txn Sender
+    intc_0 // 0
+    bytec 4 // "owner"
+    app_global_get_ex
+    assert // check self.owner exists
+    ==
+    assert // Only owner can settle
+    // smart_contracts/debate_stake/contract.py:49
+    // assert not self.is_settled.value, "Already settled"
+    intc_0 // 0
+    bytec_0 // "settled"
+    app_global_get_ex
+    assert // check self.is_settled exists
+    bytec_1 // 0x00
+    ==
+    assert // Already settled
+    // smart_contracts/debate_stake/contract.py:50
+    // self.is_settled.value = arc4.Bool(True)
+    bytec_0 // "settled"
+    pushbytes 0x80
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:51
+    // self.winner_node_id.value = winner_node_id
+    bytec_3 // "winner"
+    swap
+    app_global_put
+    // smart_contracts/debate_stake/contract.py:46
+    // @arc4.abimethod
+    intc_1 // 1
+    return
+
+
+// smart_contracts.debate_stake.contract.DebateStake.claim[routing]() -> void:
+claim:
+    // smart_contracts/debate_stake/contract.py:55
+    // assert self.is_settled.value, "Not settled yet"
+    intc_0 // 0
+    bytec_0 // "settled"
+    app_global_get_ex
+    assert // check self.is_settled exists
+    bytec_1 // 0x00
+    !=
+    assert // Not settled yet
+    // smart_contracts/debate_stake/contract.py:56
+    // caller = arc4.Address(Txn.sender)
+    txn Sender
+    // smart_contracts/debate_stake/contract.py:57
+    // assert caller in self.stakes, "No stake found"
+    bytec 5 // "s_"
+    dig 1
+    concat
+    dup
+    box_len
+    bury 1
+    assert // No stake found
+    // smart_contracts/debate_stake/contract.py:58
+    // assert caller in self.stances, "No stance found"
+    bytec 6 // "t_"
+    uncover 2
+    concat
+    dup
+    box_len
+    bury 1
+    assert // No stance found
+    // smart_contracts/debate_stake/contract.py:59
+    // caller_stance_bytes = self.stances[caller].bytes
+    box_get
+    pop
+    // smart_contracts/debate_stake/contract.py:60
+    // winner_bytes = self.winner_node_id.value.bytes
+    intc_0 // 0
+    bytec_3 // "winner"
+    app_global_get_ex
+    assert // check self.winner_node_id exists
+    // smart_contracts/debate_stake/contract.py:61
+    // assert caller_stance_bytes == winner_bytes, "You backed the wrong side"
+    ==
+    assert // You backed the wrong side
+    // smart_contracts/debate_stake/contract.py:62
+    // caller_stake = self.stakes[caller]
+    dup
+    box_get
+    pop
+    btoi
+    // smart_contracts/debate_stake/contract.py:63
+    // assert caller_stake > UInt64(0), "Already claimed or zero stake"
+    dup
+    assert // Already claimed or zero stake
+    // smart_contracts/debate_stake/contract.py:64
+    // self.stakes[caller] = UInt64(0)
+    intc_0 // 0
+    itob
+    uncover 2
+    swap
+    box_put
+    // smart_contracts/debate_stake/contract.py:65-69
+    // itxn.Payment(
+    //     receiver=Txn.sender,
+    //     amount=caller_stake,
+    //     fee=UInt64(0),
+    // ).submit()
+    itxn_begin
+    // smart_contracts/debate_stake/contract.py:66
+    // receiver=Txn.sender,
+    txn Sender
+    itxn_field Receiver
+    itxn_field Amount
+    // smart_contracts/debate_stake/contract.py:65
+    // itxn.Payment(
+    intc_1 // pay
+    itxn_field TypeEnum
+    // smart_contracts/debate_stake/contract.py:68
+    // fee=UInt64(0),
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/debate_stake/contract.py:65-69
+    // itxn.Payment(
+    //     receiver=Txn.sender,
+    //     amount=caller_stake,
+    //     fee=UInt64(0),
+    // ).submit()
+    itxn_submit
+    // smart_contracts/debate_stake/contract.py:53
+    // @arc4.abimethod
+    intc_1 // 1
+    return
+
+
+// smart_contracts.debate_stake.contract.DebateStake.get_pool_info[routing]() -> void:
+get_pool_info:
+    // smart_contracts/debate_stake/contract.py:73
+    // return arc4.UInt64(self.total_pool.value)
+    intc_0 // 0
+    bytec_2 // "pool"
+    app_global_get_ex
+    assert // check self.total_pool exists
+    itob
+    // smart_contracts/debate_stake/contract.py:71
+    // @arc4.abimethod(readonly=True)
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.debate_stake.contract.DebateStake.get_winner[routing]() -> void:
+get_winner:
+    // smart_contracts/debate_stake/contract.py:77
+    // assert self.is_settled.value, "Not settled yet"
+    intc_0 // 0
+    bytec_0 // "settled"
+    app_global_get_ex
+    assert // check self.is_settled exists
+    bytec_1 // 0x00
+    !=
+    assert // Not settled yet
+    // smart_contracts/debate_stake/contract.py:78
+    // return arc4.String.from_bytes(self.winner_node_id.value.bytes)
+    intc_0 // 0
+    bytec_3 // "winner"
+    app_global_get_ex
+    assert // check self.winner_node_id exists
+    // smart_contracts/debate_stake/contract.py:75
+    // @arc4.abimethod(readonly=True)
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return

@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     port: int = 3000
 
      # Algorand / Blockchain
-    app_id: int = 1008
+    live_proof_app_id: int = 1002
+    debate_stake_app_id: int = 1034
+    deployer_address: str = "NMNRVAW7ZYZAKXFFSTTLHHNDXLG742E36OSJMEW524XXXQTZO3R6HGOQT4"
     deployer_mnemonic: str = ""
     algod_server: str = "http://localhost"
     algod_port: int = 4001
