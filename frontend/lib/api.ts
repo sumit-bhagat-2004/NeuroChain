@@ -1,7 +1,8 @@
 import { CreateNodeResponse, GraphData, Node } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const BLOCKCHAIN_URL = "http://localhost:8001";
+const BLOCKCHAIN_URL =
+  process.env.NEXT_PUBLIC_BLOCKCHAIN_URL || "http://localhost:8001";
 
 // Algorand App IDs (LocalNet Deployment)
 export const APP_IDS = {
@@ -379,10 +380,10 @@ export interface ContributorNodeStats {
 }
 
 export async function getContributorNodeStats(
-  contributorName: string
+  contributorName: string,
 ): Promise<ContributorNodeStats> {
   const response = await fetch(
-    `${API_BASE_URL}/nodes/contributor/${encodeURIComponent(contributorName)}/stats`
+    `${API_BASE_URL}/nodes/contributor/${encodeURIComponent(contributorName)}/stats`,
   );
   if (!response.ok) throw new Error(response.statusText);
   return response.json();
@@ -402,10 +403,10 @@ export interface NodesLeaderboard {
 }
 
 export async function getNodesLeaderboard(
-  limit: number = 10
+  limit: number = 10,
 ): Promise<NodesLeaderboard> {
   const response = await fetch(
-    `${API_BASE_URL}/nodes/leaderboard?limit=${Math.min(limit, 100)}`
+    `${API_BASE_URL}/nodes/leaderboard?limit=${Math.min(limit, 100)}`,
   );
   if (!response.ok) throw new Error(response.statusText);
   return response.json();
@@ -516,10 +517,10 @@ export interface NodeListResponse {
 
 export async function listNodes(
   limit: number = 50,
-  offset: number = 0
+  offset: number = 0,
 ): Promise<NodeListResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/nodes/?limit=${limit}&offset=${offset}`
+    `${API_BASE_URL}/api/nodes/?limit=${limit}&offset=${offset}`,
   );
   if (!response.ok) throw new Error(response.statusText);
   return response.json();
