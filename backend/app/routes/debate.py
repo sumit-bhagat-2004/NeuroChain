@@ -30,12 +30,12 @@ router = APIRouter(prefix="/debate", tags=["debate"])
 async def add_transcription(request: TranscriptionRequest):
     """
     Add a new debate transcription.
-    
+
     The system will automatically:
     - Check similarity with existing nodes
     - Merge if similarity > 0.75 (like git merge)
     - Create new node if content is different
-    
+
     Request body:
     {
         "speaker": "Speaker A",
@@ -43,7 +43,7 @@ async def add_transcription(request: TranscriptionRequest):
         "debate_id": "optional-debate-session-id",
         "timestamp": 1234567890  // optional
     }
-    
+
     Response:
     {
         "action": "merged" | "created",
@@ -60,13 +60,13 @@ async def add_transcription(request: TranscriptionRequest):
 async def get_debate_node(node_id: str):
     """
     Get full details of a debate node.
-    
+
     Shows:
     - Primary text (first transcription)
     - Accumulated text (all merged transcriptions)
     - Merge history (who merged what and when)
     - Speaker list
-    
+
     Response:
     {
         "id": "uuid",

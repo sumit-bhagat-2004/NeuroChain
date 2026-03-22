@@ -341,7 +341,7 @@ async def _anchor_on_chain(node_id: str, text: str, embedding: list[float]):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "http://localhost:8001/anchor",
+                "https://special-oriole-remotely.ngrok-free.app/anchor",
                 json={
                     "node_id": node_id,
                     "text": text,

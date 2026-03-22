@@ -51,7 +51,7 @@ class DebateSessionResponse(BaseModel):
 
 class TranscriptionSegment(BaseModel):
     """A single transcription segment (speaker turn)."""
-    
+
     speaker: str = Field(..., description="Speaker identifier (e.g., 'Speaker A', 'Judge', 'Team 1')")
     text: str = Field(..., description="Transcribed text")
     timestamp: int = Field(..., description="Unix timestamp in milliseconds")
@@ -60,7 +60,7 @@ class TranscriptionSegment(BaseModel):
 
 class MergeRecord(BaseModel):
     """Record of a merge operation."""
-    
+
     merged_at: int = Field(..., description="When the merge occurred")
     similarity_score: float = Field(..., description="Similarity score that triggered merge")
     merged_text: str = Field(..., description="Text that was merged in")
@@ -104,7 +104,7 @@ class TranscriptionRequest(BaseModel):
 
 class TranscriptionResponse(BaseModel):
     """Response after processing transcription."""
-    
+
     action: str = Field(..., description="'merged' or 'created'")
     node_id: str = Field(..., description="The node ID (existing or new)")
     similarity_score: Optional[float] = Field(
@@ -117,7 +117,7 @@ class TranscriptionResponse(BaseModel):
 
 class DebateNodeDetails(BaseModel):
     """Detailed view of a debate node."""
-    
+
     id: str
     primary_text: str
     accumulated_text: str

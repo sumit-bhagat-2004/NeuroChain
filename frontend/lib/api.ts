@@ -89,7 +89,7 @@ export interface DebateSessionResponse {
 }
 
 export async function createDebateSession(
-  request: CreateDebateSessionRequest
+  request: CreateDebateSessionRequest,
 ): Promise<DebateSessionResponse> {
   const response = await fetch(`${API_BASE_URL}/debate/create`, {
     method: "POST",
@@ -103,7 +103,9 @@ export async function createDebateSession(
   return response.json();
 }
 
-export async function getDebateSession(sessionId: string): Promise<DebateSessionResponse> {
+export async function getDebateSession(
+  sessionId: string,
+): Promise<DebateSessionResponse> {
   const response = await fetch(`${API_BASE_URL}/debate/session/${sessionId}`);
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));

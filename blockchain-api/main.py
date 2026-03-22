@@ -23,7 +23,15 @@ from smart_contracts.artifacts.neurochain.live_proof_client import (
     ProofExistsArgs,
 )
 
-app = FastAPI(title="LiveProof Blockchain API", version="1.0.0")
+# Import DebateStake service
+try:
+    from debate_stake_service import DebateStakeService
+    debate_service_available = True
+except ImportError:
+    debate_service_available = False
+    print("Warning: DebateStakeService not available")
+
+app = FastAPI(title="NeuroChain Blockchain API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -173,5 +181,148 @@ def stats():
     try:
         result = client.send.get_total_proofs(args=None)
         return {"total_proofs": int(result.abi_return), "app_id": int(os.getenv("APP_ID", 1002))}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# STAKING ENDPOINTS (NEW)
+# ────────────────────────────────────────────────────────────────────────────
+
+# Staking Models
+class InitializeStakingRequest(BaseModel):
+    debate_id: str
+    creator_wallet: str
+
+class StakeRequest(BaseModel):
+    app_id: int
+    stance_node_id: str
+    amount: int
+    user_wallet: str
+
+class SettleRequest(BaseModel):
+    app_id: int
+    winner_node_id: str
+    settler_wallet: str
+
+class ClaimRequest(BaseModel):
+    app_id: int
+    user_wallet: str
+
+
+@app.post("/staking/initialize")
+async def initialize_staking(req: InitializeStakingRequest):
+    """Initialize a new debate staking pool."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        owner_account = algokit_utils.SigningAccount(
+            private_key=os.getenv("DEPLOYER_PRIVATE_KEY", "")
+        )
+
+        result = service.initialize(req.debate_id, owner_account)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/staking/stake")
+async def place_stake(req: StakeRequest):
+    """Place a stake on a debate side."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        user_account = algokit_utils.SigningAccount(
+            private_key=os.getenv("DEPLOYER_PRIVATE_KEY", "")  # In production, user would sign
+        )
+
+        result = service.stake(req.app_id, req.stance_node_id, req.amount, user_account)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/staking/settle")
+async def settle_debate(req: SettleRequest):
+    """Settle a debate and declare winner."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        settler_account = algokit_utils.SigningAccount(
+            private_key=os.getenv("DEPLOYER_PRIVATE_KEY", "")
+        )
+
+        result = service.settle(req.app_id, req.winner_node_id, settler_account)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/staking/claim")
+async def claim_rewards(req: ClaimRequest):
+    """Claim rewards from a settled debate."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        user_account = algokit_utils.SigningAccount(
+            private_key=os.getenv("DEPLOYER_PRIVATE_KEY", "")
+        )
+
+        result = service.claim(req.app_id, user_account)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/staking/pool/{app_id}")
+async def get_pool_info(app_id: int):
+    """Get staking pool information."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        result = service.get_pool_info(app_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/staking/winner/{app_id}")
+async def get_winner(app_id: int):
+    """Get winner of a settled debate."""
+    if not debate_service_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Debate staking service not available"
+        )
+
+    try:
+        service = DebateStakeService()
+        result = service.get_winner(app_id)
+        return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

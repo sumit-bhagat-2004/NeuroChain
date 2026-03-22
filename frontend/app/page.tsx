@@ -1,8 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useWallet } from '@/lib/WalletContext';
-import { Network, MessageSquare, BrainCircuit, ShieldCheck, ArrowRight, Zap } from 'lucide-react';
+import Link from "next/link";
+import { useWallet } from "@/lib/WalletContext";
+import {
+  Network,
+  MessageSquare,
+  BrainCircuit,
+  ShieldCheck,
+  ArrowRight,
+  Zap,
+} from "lucide-react";
 
 export default function Home() {
   const { accountAddress, connectWallet } = useWallet();
@@ -61,7 +68,9 @@ export default function Home() {
         </h1>
 
         <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Map your thoughts into a living knowledge graph. Engage in cryptographically secured debates powered by AI analysis and Algorand blockchain technology.
+          Map your thoughts into a living knowledge graph. Engage in
+          cryptographically secured debates powered by AI analysis and Algorand
+          blockchain technology.
         </p>
 
         {/* CTA Buttons */}
@@ -89,14 +98,17 @@ export default function Home() {
       {/* Premium Features Grid (Bento Style) */}
       <section className="max-w-7xl mx-auto px-6 py-24 z-10 relative">
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
           {/* Feature 1: Spans 2 columns on large screens */}
           <div className="lg:col-span-2 group bg-gradient-to-br from-gray-900 to-gray-950 border border-white/5 hover:border-purple-500/30 rounded-3xl p-8 transition-all duration-500 overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 transition-colors duration-500" />
             <Network className="w-12 h-12 text-purple-400 mb-6 group-hover:scale-110 transition-transform duration-500" />
-            <h3 className="text-2xl font-bold text-white mb-3">Living Knowledge Graph</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">
+              Living Knowledge Graph
+            </h3>
             <p className="text-gray-400 leading-relaxed max-w-md">
-              Watch ideas physically connect in real-time. Our force-directed visualization merges semantic similarities, evolving raw thoughts into a structured network of human intelligence.
+              Watch ideas physically connect in real-time. Our force-directed
+              visualization merges semantic similarities, evolving raw thoughts
+              into a structured network of human intelligence.
             </p>
           </div>
 
@@ -104,9 +116,13 @@ export default function Home() {
           <div className="group bg-gradient-to-br from-gray-900 to-gray-950 border border-white/5 hover:border-orange-500/30 rounded-3xl p-8 transition-all duration-500 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl group-hover:bg-orange-500/10 transition-colors duration-500" />
             <MessageSquare className="w-12 h-12 text-orange-400 mb-6 group-hover:scale-110 transition-transform duration-500" />
-            <h3 className="text-2xl font-bold text-white mb-3">Token-Gated Debates</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">
+              Token-Gated Debates
+            </h3>
             <p className="text-gray-400 leading-relaxed">
-              Create structured, secure debate environments. Wallet-based authentication ensures genuine participation and immutable speaker records.
+              Create structured, secure debate environments. Wallet-based
+              authentication ensures genuine participation and immutable speaker
+              records.
             </p>
           </div>
 
@@ -114,9 +130,13 @@ export default function Home() {
           <div className="group bg-gradient-to-br from-gray-900 to-gray-950 border border-white/5 hover:border-blue-500/30 rounded-3xl p-8 transition-all duration-500 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors duration-500" />
             <BrainCircuit className="w-12 h-12 text-blue-400 mb-6 group-hover:scale-110 transition-transform duration-500" />
-            <h3 className="text-2xl font-bold text-white mb-3">AI Sentience Engine</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">
+              AI Sentience Engine
+            </h3>
             <p className="text-gray-400 leading-relaxed">
-              Machine learning models analyze debate semantics to find consensus, detect logical fallacies, and map argument trajectories in real-time.
+              Machine learning models analyze debate semantics to find
+              consensus, detect logical fallacies, and map argument trajectories
+              in real-time.
             </p>
           </div>
 
@@ -124,12 +144,15 @@ export default function Home() {
           <div className="lg:col-span-2 group bg-gradient-to-br from-gray-900 to-gray-950 border border-white/5 hover:border-green-500/30 rounded-3xl p-8 transition-all duration-500 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl group-hover:bg-green-500/10 transition-colors duration-500" />
             <ShieldCheck className="w-12 h-12 text-green-400 mb-6 group-hover:scale-110 transition-transform duration-500" />
-            <h3 className="text-2xl font-bold text-white mb-3">Algorand Immutable Ledger</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">
+              Algorand Immutable Ledger
+            </h3>
             <p className="text-gray-400 leading-relaxed max-w-md">
-              Every debate conclusion and knowledge node is hashed and anchored to the Algorand blockchain. Ensure absolute transparency, low latency, and unalterable proof of thought.
+              Every debate conclusion and knowledge node is hashed and anchored
+              to the Algorand blockchain. Ensure absolute transparency, low
+              latency, and unalterable proof of thought.
             </p>
           </div>
-
         </div>
       </section>
 
@@ -145,7 +168,8 @@ export default function Home() {
               Ready to wire your mind to the chain?
             </h2>
             <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-              Connect your Pera Wallet instantly. No emails, no passwords, just pure decentralized discourse.
+              Connect your Pera Wallet instantly. No emails, no passwords, just
+              pure decentralized discourse.
             </p>
 
             <button
@@ -169,10 +193,24 @@ export default function Home() {
             </span>
           </div>
           <div className="flex gap-8 text-sm text-gray-400 font-medium">
-            <Link href="/dashboard" className="hover:text-purple-400 transition-colors">Knowledge Graph</Link>
-            <Link href="/debate" className="hover:text-purple-400 transition-colors">Debate Hub</Link>
-            <a href="#" className="hover:text-purple-400 transition-colors">Algorand Integration</a>
-            <a href="#" className="hover:text-purple-400 transition-colors">GitHub</a>
+            <Link
+              href="/dashboard"
+              className="hover:text-purple-400 transition-colors"
+            >
+              Knowledge Graph
+            </Link>
+            <Link
+              href="/debate"
+              className="hover:text-purple-400 transition-colors"
+            >
+              Debate Hub
+            </Link>
+            <a href="#" className="hover:text-purple-400 transition-colors">
+              Algorand Integration
+            </a>
+            <a href="#" className="hover:text-purple-400 transition-colors">
+              GitHub
+            </a>
           </div>
           <p className="text-sm text-gray-500">
             © {new Date().getFullYear()} NeuroChain. MIT License.
